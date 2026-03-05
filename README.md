@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LuminaMesh
 
-## Getting Started
+LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling server with the scalability of a client-side mesh network, allowing users to share large files securely and efficiently directly through their browsers without zero-persistence server storage.
 
-First, run the development server:
+## Architecture Overview
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+LuminaMesh operates on a dual-layer architecture:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. **The Nexus (Signaling Server):**
+   A custom Node.js server wrapping Next.js and Socket.io. The Nexus manages WebRTC signaling (offers, answers, and ICE candidates) to facilitate connection handshakes between peers globally.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. **The Swarm (Client Mesh):**
+   Once connected via the Nexus, peers communicate directly over WebRTC data channels. The mesh network utilizes a proprietary Gossip Protocol to announce and request available file chunks (64KB slices) dynamically from the swarm.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Technology Stack
 
-## Learn More
+- **Frontend & API Layout:** Next.js 15 (App Router), React 19
+- **Database (Permanent Metadata):** Neon PostgreSQL with Prisma ORM
+- **In-Memory State (Room Management):** Upstash Redis Serverless
+- **Real-Time Signaling:** Socket.io
+- **P2P Networking:** WebRTC (via Simple-Peer)
+- **Security:** JSON Web Tokens (JWT), Web Crypto API (SHA-256)
 
-To learn more about Next.js, take a look at the following resources:
+## Security and Privacy Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **End-to-End Encryption (E2EE):** All file transfers occur over DTLS and SRTP secured WebRTC channels. The signaling server never processes or touches the actual file payload.
+- **Zero-Persistence Data Storage:** Files exist entirely within the volatile memory of the active browser swarm. When all peers exit a room, the file ceases to exist.
+- **Cryptographic chunk verification:** Senders automatically generate a SHA-256 manifest of the file. Receivers strictly verify the hash of each incoming 64KB chunk. Malicious or corrupted packets are immediately discarded, and poisoning nodes are blacklisted.
+- **Robust Access Control:** Real-time WebSockets are secured via JWTs issued exclusively through verified API routes, preventing unauthorized mesh eavesdropping or flooding.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Prerequisites
 
-## Deploy on Vercel
+To run LuminaMesh locally, ensure the following are installed:
+- Node.js (v20 or higher recommended)
+- A Neon PostgreSQL Database URL
+- An Upstash Redis REST URL and Token
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Local Development Setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Environment Configuration**
+   Duplicate `.env.local` to `.env` (if not already done) and configure your database and Redis credentials:
+   ```env
+   DATABASE_URL="postgresql://user:password@neon-host/database"
+   UPSTASH_REDIS_REST_URL="https://your-url.upstash.io"
+   UPSTASH_REDIS_REST_TOKEN="your-token"
+   JWT_SECRET="your-secure-random-string"
+   NEXT_PUBLIC_APP_URL="http://localhost:3000"
+   ```
+
+2. **Database Migration**
+   Generate the Prisma client and push the schema to your Neon database:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+3. **Start the Development Server**
+   Start the hybrid Next.js + Socket.io custom server:
+   ```bash
+   npm run dev
+   ```
+   The application will be accessible at `http://localhost:3000`.
+
+## License
+
+This project is proprietary and confidential.
