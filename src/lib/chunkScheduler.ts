@@ -38,6 +38,10 @@ export class ChunkScheduler {
   // Gossip interval handle
   private gossipInterval: ReturnType<typeof setInterval> | null = null;
 
+  // Push-based distribution state (seeder proactively pushes unique chunks)
+  private pushInterval: ReturnType<typeof setInterval> | null = null;
+  private pushCursors: Map<string, number> = new Map();
+
   constructor(
     peerManager: PeerManager,
     events: SchedulerEvents,
@@ -78,6 +82,69 @@ export class ChunkScheduler {
     if (this.gossipInterval) {
       clearInterval(this.gossipInterval);
       this.gossipInterval = null;
+    }
+    this.stopPushing();
+  }
+
+  /**
+   * Start push-based distribution (seeder only).
+   *
+   * The seeder proactively pushes chunks to each connected peer using
+   * offset-based striping: each peer starts at a different position in
+   * the file, so everyone receives UNIQUE chunks simultaneously.
+   *
+   * Example with 500 chunks, 2 peers:
+   *   Peer A starts at offset 0:   pushes 0, 1, 2, 3...
+   *   Peer B starts at offset 250: pushes 250, 251, 252...
+   *   → Sender distributes unique chunks, peers cross-share via relay.
+   */
+  startPushing(): void {
+    if (this.pushInterval) return;
+    this.pushInterval = setInterval(() => this.pushNextChunks(), 80);
+  }
+
+  stopPushing(): void {
+    if (this.pushInterval) {
+      clearInterval(this.pushInterval);
+      this.pushInterval = null;
+    }
+  }
+
+  /**
+   * Push unique chunks to each peer using offset-based striping.
+   * Each peer's cursor starts at an evenly-spaced position in the file.
+   */
+  private pushNextChunks(): void {
+    const peers = this.peerManager.getConnectedPeers();
+    if (peers.length === 0) return;
+
+    for (let p = 0; p < peers.length; p++) {
+      const pid = peers[p];
+      const peerBf = this.peerBitfields.get(pid) || new Set();
+
+      // Initialize cursor at an evenly-spaced offset so each peer
+      // starts downloading from a different region of the file.
+      if (!this.pushCursors.has(pid)) {
+        const offset = Math.floor((p / peers.length) * this.totalChunks);
+        this.pushCursors.set(pid, offset);
+      }
+
+      let cursor = this.pushCursors.get(pid)!;
+      let sent = 0;
+      let checked = 0;
+
+      // Push up to 3 chunks per peer per cycle (respects DataChannel backpressure)
+      while (sent < 3 && checked < this.totalChunks) {
+        const idx = cursor % this.totalChunks;
+        if (!peerBf.has(idx) && this.chunks[idx]) {
+          this.peerManager.sendChunk(pid, idx, new Uint8Array(this.chunks[idx]!));
+          sent++;
+        }
+        cursor++;
+        checked++;
+      }
+
+      this.pushCursors.set(pid, cursor % this.totalChunks);
     }
   }
 
@@ -157,12 +224,16 @@ export class ChunkScheduler {
     this.events.onChunkVerified(chunkIndex);
     this.events.onProgress(this.haveSet.size, this.totalChunks);
 
-    // Announce to all peers that we have this chunk
+    // INSTANT RELAY: Forward this chunk to ALL connected peers who don't
+    // have it yet. This is the core of simultaneous inflow/outflow —
+    // the moment we receive a chunk, we push it to everyone else.
+    // No waiting for gossip cycles or pull requests.
     for (const pid of this.peerManager.getConnectedPeers()) {
-      this.peerManager.send(pid, {
-        type: "chunk-available",
-        chunkIndex,
-      });
+      if (pid === peerId) continue; // don't relay back to the sender
+      const peerBf = this.peerBitfields.get(pid);
+      if (!peerBf || !peerBf.has(chunkIndex)) {
+        this.peerManager.sendChunk(pid, chunkIndex, new Uint8Array(data));
+      }
     }
 
     // Check completion — but DON'T stop the gossip loop!
@@ -184,7 +255,11 @@ export class ChunkScheduler {
   }
 
   /**
-   * Pick the rarest missing chunks and request them from peers that have them.
+   * Pick missing chunks and dispatch requests across all peers in parallel.
+   *
+   * Strategy: build a per-peer queue of chunks they can serve, then
+   * round-robin across peers so every peer gets utilized every cycle.
+   * Within each peer's queue, rarest chunks come first.
    */
   private requestNextChunks(): void {
     const missing = this.getMissingChunks();
@@ -197,9 +272,8 @@ export class ChunkScheduler {
       }
     }
 
-    // Count how many peers have each missing chunk (rarest-first)
-    const chunkRarity: { index: number; count: number; peers: string[] }[] = [];
-
+    // Build rarity map: for each missing chunk, which connected peers have it?
+    const chunkInfo: { index: number; count: number; peers: string[] }[] = [];
     for (const idx of missing) {
       if (this.pendingRequests.has(idx)) continue;
       const peersWithChunk: string[] = [];
@@ -209,32 +283,78 @@ export class ChunkScheduler {
         }
       }
       if (peersWithChunk.length > 0) {
-        chunkRarity.push({ index: idx, count: peersWithChunk.length, peers: peersWithChunk });
+        chunkInfo.push({ index: idx, count: peersWithChunk.length, peers: peersWithChunk });
       }
     }
 
-    // Sort by rarity (fewest peers first)
-    chunkRarity.sort((a, b) => a.count - b.count);
+    // Sort by rarity (fewest peers first = most critical to grab)
+    chunkInfo.sort((a, b) => a.count - b.count);
 
-    // Scale concurrency with the number of connected peers (min 5, max 20)
-    const connectedCount = this.peerManager.getConnectedPeers().length;
-    const maxRequests = Math.max(5, Math.min(connectedCount * 3, 20));
-    let requested = 0;
+    // Shuffle chunks WITHIN each rarity tier so different peers don't
+    // all request the same chunks from the sender simultaneously.
+    // Without this, peers A, B, C would all request chunks 0,1,2,3...
+    // With this, A requests 47,312,8..., B requests 501,23,199...
+    // Result: sender distributes DIFFERENT chunks to each peer,
+    // and later they cross-share what they each uniquely received.
+    let i = 0;
+    while (i < chunkInfo.length) {
+      let j = i;
+      while (j < chunkInfo.length && chunkInfo[j].count === chunkInfo[i].count) j++;
+      // Fisher-Yates shuffle of chunkInfo[i..j)
+      for (let k = j - 1; k > i; k--) {
+        const r = i + Math.floor(Math.random() * (k - i + 1));
+        [chunkInfo[k], chunkInfo[r]] = [chunkInfo[r], chunkInfo[k]];
+      }
+      i = j;
+    }
 
-    // Track load per peer so we spread requests evenly (least-loaded first)
-    const peerLoadMap = new Map<string, number>();
+    // Build per-peer queues: each peer gets a list of chunks it can serve,
+    // ordered by rarity. A chunk appears in ONLY ONE peer's queue
+    // (the least-loaded one), guaranteeing no duplicate requests.
+    const peerQueues = new Map<string, number[]>();
+    const peerLoad = new Map<string, number>();
+    const assigned = new Set<number>();
 
-    for (const entry of chunkRarity) {
-      if (requested >= maxRequests) break;
-      // Pick the LEAST-LOADED peer that has this chunk
+    for (const entry of chunkInfo) {
+      if (assigned.has(entry.index)) continue;
+
+      // Pick the least-loaded peer that has this chunk
       entry.peers.sort(
-        (a, b) => (peerLoadMap.get(a) || 0) - (peerLoadMap.get(b) || 0)
+        (a, b) => (peerLoad.get(a) || 0) - (peerLoad.get(b) || 0)
       );
       const selectedPeer = entry.peers[0];
-      peerLoadMap.set(selectedPeer, (peerLoadMap.get(selectedPeer) || 0) + 1);
-      this.peerManager.requestChunk(selectedPeer, entry.index);
-      this.pendingRequests.set(entry.index, Date.now());
-      requested++;
+
+      if (!peerQueues.has(selectedPeer)) peerQueues.set(selectedPeer, []);
+      peerQueues.get(selectedPeer)!.push(entry.index);
+      peerLoad.set(selectedPeer, (peerLoad.get(selectedPeer) || 0) + 1);
+      assigned.add(entry.index);
+    }
+
+    // Round-robin across all peers: take one chunk from each peer in turn.
+    // This guarantees truly parallel dispatching across the swarm.
+    const connectedCount = this.peerManager.getConnectedPeers().length;
+    const maxRequests = Math.max(5, Math.min(connectedCount * 5, 25));
+    let requested = 0;
+    const peerIds = Array.from(peerQueues.keys());
+    const cursors = new Map<string, number>();
+    for (const pid of peerIds) cursors.set(pid, 0);
+
+    let progress = true;
+    while (requested < maxRequests && progress) {
+      progress = false;
+      for (const pid of peerIds) {
+        if (requested >= maxRequests) break;
+        const queue = peerQueues.get(pid)!;
+        const cursor = cursors.get(pid)!;
+        if (cursor < queue.length) {
+          const chunkIdx = queue[cursor];
+          this.peerManager.requestChunk(pid, chunkIdx);
+          this.pendingRequests.set(chunkIdx, Date.now());
+          cursors.set(pid, cursor + 1);
+          requested++;
+          progress = true;
+        }
+      }
     }
   }
 
@@ -266,5 +386,6 @@ export class ChunkScheduler {
    */
   removePeer(peerId: string): void {
     this.peerBitfields.delete(peerId);
+    this.pushCursors.delete(peerId);
   }
 }

@@ -121,6 +121,7 @@ export default function UploadPage() {
     // We are the seeder — we have ALL chunks
     scheduler.seedAll(chunks);
     scheduler.start();
+    scheduler.startPushing(); // proactively push unique chunks to each peer
 
     const socketClient = new SocketClient(peerManager, {
       onConnected: () => {
