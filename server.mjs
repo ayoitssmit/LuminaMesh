@@ -14,13 +14,18 @@ const handler = app.getRequestHandler();
 app.prepare().then(() => {
   const httpServer = createServer(handler);
 
-  // Initialize Upstash Redis here (Next.js has loaded .env.local by this point)
   const redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL || "",
     token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
   });
 
   const ROOM_TTL_SECONDS = 60 * 60 * 24;
+
+  // Map peerId -> socketId for targeted message routing
+  const peerSockets = new Map();
+
+  // Track which rooms have been registered in Redis (avoid duplicate calls)
+  const registeredPeers = new Set();
 
   const io = new Server(httpServer, {
     cors: {
@@ -43,44 +48,79 @@ app.prepare().then(() => {
     }
   });
 
-  io.on("connection", async (socket) => {
+  io.on("connection", (socket) => {
     const roomId = socket.data.roomId;
     const peerId = socket.data.peerId;
+    const peerKey = `${roomId}:${peerId}`;
 
-    console.log(`[Socket] Peer ${peerId} connected to Room ${roomId}`);
+    peerSockets.set(peerId, socket.id);
 
     socket.on("join-room", async () => {
       socket.join(roomId);
-      
-      // Add peer to Redis active Swarm
-      const key = `room:peers:${roomId}`;
-      await redis.sadd(key, peerId);
-      await redis.expire(key, ROOM_TTL_SECONDS);
 
-      // Notify others
+      // Full-Mesh: Send the NEW peer a list of everyone already in the room
+      // so it can initiate outbound WebRTC handshakes to all of them.
+      const roomSockets = await io.in(roomId).fetchSockets();
+      const existingPeerIds = roomSockets
+        .filter((s) => s.data.peerId !== peerId)
+        .map((s) => s.data.peerId);
+
+      if (existingPeerIds.length > 0) {
+        socket.emit("existing-peers", existingPeerIds);
+        console.log(`[mesh] Sent ${existingPeerIds.length} existing peers to ${peerId}`);
+      }
+
+      // Only register in Redis once per peer per room
+      if (!registeredPeers.has(peerKey)) {
+        registeredPeers.add(peerKey);
+        const key = `room:peers:${roomId}`;
+        await redis.sadd(key, peerId);
+        await redis.expire(key, ROOM_TTL_SECONDS);
+        console.log(`[+] ${peerId} joined ${roomId}`);
+      }
+
+      // Tell existing peers about the new joiner (they will also initiate)
       socket.to(roomId).emit("peer-joined", peerId);
     });
 
     socket.on("offer", (data) => {
-      io.to(roomId).emit("offer", { from: peerId, to: data.to, offer: data.offer });
+      const targetSocketId = peerSockets.get(data.to);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit("offer", { from: peerId, to: data.to, offer: data.offer });
+      }
     });
 
     socket.on("answer", (data) => {
-      io.to(roomId).emit("answer", { from: peerId, to: data.to, answer: data.answer });
+      const targetSocketId = peerSockets.get(data.to);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit("answer", { from: peerId, to: data.to, answer: data.answer });
+      }
     });
 
     socket.on("ice-candidate", (data) => {
-      io.to(roomId).emit("ice-candidate", { from: peerId, to: data.to, candidate: data.candidate });
+      const targetSocketId = peerSockets.get(data.to);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit("ice-candidate", { from: peerId, to: data.to, candidate: data.candidate });
+      }
     });
 
     socket.on("disconnect", async () => {
-      console.log(`[Socket] Peer ${peerId} disconnected from Room ${roomId}`);
-      
-      // Remove peer from Redis Swarm
-      const key = `room:peers:${roomId}`;
-      await redis.srem(key, peerId);
-      
-      socket.to(roomId).emit("peer-disconnected", peerId);
+      // Only tear down if THIS socket is still the active one for the peer.
+      // If a newer socket already replaced this one (React Strict Mode reconnect),
+      // do NOT broadcast peer-disconnected — the peer is still alive!
+      if (peerSockets.get(peerId) === socket.id) {
+        peerSockets.delete(peerId);
+
+        if (registeredPeers.has(peerKey)) {
+          registeredPeers.delete(peerKey);
+          const key = `room:peers:${roomId}`;
+          await redis.srem(key, peerId);
+          console.log(`[-] ${peerId} left ${roomId}`);
+        }
+
+        // Only notify the room if this was a REAL disconnect
+        socket.to(roomId).emit("peer-disconnected", peerId);
+      }
     });
   });
 
@@ -91,6 +131,6 @@ app.prepare().then(() => {
     })
     .listen(port, () => {
       console.log(`> Ready on http://${hostname}:${port}`);
-      console.log(`> Websocket Signaling Server + Redis attached.`);
+      console.log(`> Signaling Server + Redis attached.`);
     });
 });

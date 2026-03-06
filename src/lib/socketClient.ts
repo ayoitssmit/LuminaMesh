@@ -1,6 +1,5 @@
 import { io, Socket } from "socket.io-client";
 import { PeerManager } from "./peerManager";
-import type SimplePeer from "simple-peer";
 
 export type SocketClientEvents = {
   onConnected: () => void;
@@ -44,51 +43,70 @@ export class SocketClient {
     });
 
     this.socket.on("connect", () => {
+      console.log("[SocketClient] Connected, my peerId:", this.myPeerId);
       this.events.onConnected();
-      // Immediately join the room
       this.socket!.emit("join-room");
     });
 
     this.socket.on("connect_error", (err: Error) => {
+      console.error("[SocketClient] Connect error:", err.message);
       this.events.onError(err.message);
     });
 
     // A new peer entered the room — we initiate the WebRTC handshake
     this.socket.on("peer-joined", (peerId: string) => {
+      console.log("[SocketClient] peer-joined:", peerId);
       this.events.onPeerJoined(peerId);
       // We are the initiator since we were here first
       this.peerManager.createPeer(peerId, true);
     });
 
+    // Full-Mesh: We just joined — server tells us who's already here.
+    // Initiate outbound WebRTC handshakes to ALL existing peers.
+    this.socket.on("existing-peers", (peerIds: string[]) => {
+      console.log("[SocketClient] existing-peers:", peerIds);
+      for (const pid of peerIds) {
+        if (!this.peerManager.hasPeer(pid)) {
+          this.events.onPeerJoined(pid);
+          this.peerManager.createPeer(pid, true);
+        }
+      }
+    });
+
     // Receive a WebRTC offer — create a non-initiator peer and feed the signal
-    this.socket.on("offer", (data: { from: string; to: string; offer: SimplePeer.SignalData }) => {
+    this.socket.on("offer", (data: { from: string; to: string; offer: any }) => {
+      console.log("[SocketClient] offer from:", data.from, "to:", data.to);
       if (data.to !== this.myPeerId) return;
-      // Create peer as responder if not already connected
-      if (!this.peerManager.isConnected(data.from)) {
+      // Create peer as responder if we don't already have a peer instance
+      if (!this.peerManager.hasPeer(data.from)) {
         this.peerManager.createPeer(data.from, false);
       }
       this.peerManager.signal(data.from, data.offer);
     });
 
     // Receive a WebRTC answer
-    this.socket.on("answer", (data: { from: string; to: string; answer: SimplePeer.SignalData }) => {
+    this.socket.on("answer", (data: { from: string; to: string; answer: any }) => {
+      console.log("[SocketClient] answer from:", data.from, "to:", data.to);
       if (data.to !== this.myPeerId) return;
       this.peerManager.signal(data.from, data.answer);
     });
 
     // Receive an ICE candidate
-    this.socket.on("ice-candidate", (data: { from: string; to: string; candidate: SimplePeer.SignalData }) => {
+    this.socket.on("ice-candidate", (data: { from: string; to: string; candidate: any }) => {
+      console.log("[SocketClient] ice-candidate from:", data.from);
       if (data.to !== this.myPeerId) return;
       this.peerManager.signal(data.from, data.candidate);
     });
 
     // A peer left the room
     this.socket.on("peer-disconnected", (peerId: string) => {
+      console.log("[SocketClient] peer-disconnected:", peerId);
       this.peerManager.destroyPeer(peerId);
       this.events.onPeerLeft(peerId);
     });
 
     this.socket.on("disconnect", () => {
+      console.log("[SocketClient] Disconnected");
       this.events.onDisconnected();
     });
   }
@@ -96,8 +114,11 @@ export class SocketClient {
   /**
    * Send signaling data (offer/answer/ICE) to a specific peer via the server.
    */
-  sendSignal(toPeerId: string, signalData: SimplePeer.SignalData): void {
+  sendSignal(toPeerId: string, signalData: any): void {
     if (!this.socket) return;
+
+    const sigType = signalData.type || "ice-candidate";
+    console.log("[SocketClient] sendSignal", sigType, "to", toPeerId);
 
     if (signalData.type === "offer") {
       this.socket.emit("offer", { to: toPeerId, offer: signalData });

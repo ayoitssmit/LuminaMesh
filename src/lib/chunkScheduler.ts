@@ -29,8 +29,11 @@ export class ChunkScheduler {
   // What each peer has
   private peerBitfields: Map<string, Set<number>> = new Map();
 
-  // Pending requests to avoid duplicates
-  private pendingRequests: Set<number> = new Set();
+  // Pending requests to avoid duplicates (chunkIndex -> timestamp)
+  private pendingRequests: Map<number, number> = new Map();
+
+  // Whether onComplete has already been fired (gossip keeps running for re-seeding)
+  private completed = false;
 
   // Gossip interval handle
   private gossipInterval: ReturnType<typeof setInterval> | null = null;
@@ -68,7 +71,7 @@ export class ChunkScheduler {
     this.gossipInterval = setInterval(() => {
       this.broadcastBitfield();
       this.requestNextChunks();
-    }, 1000); // every second
+    }, 500); // 500ms — faster gossip for quicker swarm convergence
   }
 
   stop(): void {
@@ -138,11 +141,14 @@ export class ChunkScheduler {
     // Already have this chunk
     if (this.haveSet.has(chunkIndex)) return;
 
-    // Verify hash
-    const hash = await this.sha256(data);
-    if (hash !== this.chunkHashes[chunkIndex]) {
-      this.events.onChunkFailed(chunkIndex, peerId);
-      return;
+    // Verify hash (skip if no hash available)
+    const expectedHash = this.chunkHashes[chunkIndex];
+    if (expectedHash && expectedHash.length > 0) {
+      const hash = await this.sha256(data);
+      if (hash !== expectedHash) {
+        this.events.onChunkFailed(chunkIndex, peerId);
+        return;
+      }
     }
 
     // Store verified chunk
@@ -159,9 +165,10 @@ export class ChunkScheduler {
       });
     }
 
-    // Check completion
-    if (this.haveSet.size === this.totalChunks) {
-      this.stop();
+    // Check completion — but DON'T stop the gossip loop!
+    // Keep broadcasting our bitfield so new peers can request chunks from us.
+    if (this.haveSet.size === this.totalChunks && !this.completed) {
+      this.completed = true;
       this.events.onComplete(this.chunks as ArrayBuffer[]);
     }
   }
@@ -183,6 +190,13 @@ export class ChunkScheduler {
     const missing = this.getMissingChunks();
     if (missing.length === 0) return;
 
+    const now = Date.now();
+    for (const [idx, timestamp] of this.pendingRequests.entries()) {
+      if (now - timestamp > 5000) {
+        this.pendingRequests.delete(idx); // timeout after 5s
+      }
+    }
+
     // Count how many peers have each missing chunk (rarest-first)
     const chunkRarity: { index: number; count: number; peers: string[] }[] = [];
 
@@ -202,16 +216,24 @@ export class ChunkScheduler {
     // Sort by rarity (fewest peers first)
     chunkRarity.sort((a, b) => a.count - b.count);
 
-    // Request up to 5 chunks per cycle to avoid flooding
-    const maxRequests = 5;
+    // Scale concurrency with the number of connected peers (min 5, max 20)
+    const connectedCount = this.peerManager.getConnectedPeers().length;
+    const maxRequests = Math.max(5, Math.min(connectedCount * 3, 20));
     let requested = 0;
+
+    // Track load per peer so we spread requests evenly (least-loaded first)
+    const peerLoadMap = new Map<string, number>();
 
     for (const entry of chunkRarity) {
       if (requested >= maxRequests) break;
-      // Pick a random peer from those that have this chunk
-      const randomPeer = entry.peers[Math.floor(Math.random() * entry.peers.length)];
-      this.peerManager.requestChunk(randomPeer, entry.index);
-      this.pendingRequests.add(entry.index);
+      // Pick the LEAST-LOADED peer that has this chunk
+      entry.peers.sort(
+        (a, b) => (peerLoadMap.get(a) || 0) - (peerLoadMap.get(b) || 0)
+      );
+      const selectedPeer = entry.peers[0];
+      peerLoadMap.set(selectedPeer, (peerLoadMap.get(selectedPeer) || 0) + 1);
+      this.peerManager.requestChunk(selectedPeer, entry.index);
+      this.pendingRequests.set(entry.index, Date.now());
       requested++;
     }
   }
