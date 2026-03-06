@@ -1,50 +1,41 @@
 # LuminaMesh
 
-LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling server with the scalability of a client-side **full-mesh swarm network**, allowing users to share large files securely and efficiently directly through their browsers with zero-persistence server storage.
+LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling server with the scalability of a client-side full-mesh swarm network, allowing users to share large files securely and efficiently directly through their browsers with zero-persistence server storage.
 
 ## Architecture Overview
 
 LuminaMesh operates on a dual-layer architecture:
 
-1. **The Nexus (Signaling Server):**
-   A custom Node.js server wrapping Next.js and Socket.io. The Nexus manages WebRTC signaling (offers, answers, and ICE candidates) to facilitate connection handshakes between peers globally. On join, every new peer receives a list of all existing peers in the room, enabling **full-mesh WebRTC connections** where every node can communicate directly with every other node.
+1. **The Signaling Server (Nexus):**
+   A custom Node.js server wrapping Next.js and Socket.io. The server manages WebRTC signaling (offers, answers, and ICE candidates) to facilitate connection handshakes between peers globally. On joining, every new peer receives a list of all existing peers in the room, enabling full-mesh WebRTC connections where every node can communicate directly with every other node.
 
-2. **The Swarm (Client Mesh):**
-   Once connected via the Nexus, peers communicate directly over WebRTC data channels in a full-mesh topology. The mesh network utilizes a **Gossip Protocol** to announce and request available file chunks (64KB slices) dynamically from the swarm.
+2. **The Client Mesh (Swarm):**
+   Once connected via the signaling server, peers communicate directly over WebRTC data channels in a full-mesh topology. The mesh network utilizes a gossip protocol to announce and request available file chunks dynamically from the swarm.
 
 ### Full-Mesh Swarm Protocol
 
-Unlike traditional star-topology file sharing (where all receivers download from a single sender), LuminaMesh implements a **BitTorrent-inspired swarm**:
+Unlike traditional star-topology file sharing, LuminaMesh implements a BitTorrent-inspired swarm to enable concurrent, high-throughput transfers:
 
-- **Bitfield Gossip (500ms interval):** Every peer periodically announces which chunks it has to all connected peers.
+- **Bitfield Gossip:** Every peer periodically announces which chunks it has to all connected peers.
 - **Rarest-First Chunk Selection:** Peers prioritize downloading chunks that are held by the fewest peers, maximizing data availability across the swarm.
 - **Least-Loaded Peer Selection:** Chunk requests are spread evenly across all available peers using a load-balancing algorithm, preventing any single peer from becoming a bottleneck.
-- **Concurrent Multi-Source Downloads:** Up to 20 concurrent chunk requests are dispatched across multiple peers simultaneously, scaling with the number of connected nodes.
-- **Automatic Re-Seeding:** Receivers become seeders immediately — every downloaded chunk is available for redistribution to other peers. After completing a download, peers continue gossiping and serving chunks to keep the swarm alive.
-
-```
-Peer A (Seeder)  ←→  Peer B (Receiver/Seeder)
-     ↕                    ↕
-Peer C (Receiver)  ←→  Peer D (Receiver)
-
-Every peer connects to every other peer.
-Chunks flow through the fastest available path.
-```
+- **Concurrent Multi-Source Downloads:** Chunk requests are dispatched across multiple peers simultaneously, scaling the transfer speed with the number of connected nodes.
+- **Automatic Re-Seeding:** Receivers become seeders immediately. Every downloaded chunk is available for redistribution to other peers. After completing a download, peers continue gossiping and serving chunks to keep alive the swarm.
 
 ## Technology Stack
 
-- **Frontend & API Layout:** Next.js 16 (App Router), React 19
-- **Database (Permanent Metadata):** Neon PostgreSQL with Prisma ORM
-- **In-Memory State (Room Management):** Upstash Redis Serverless
+- **Frontend Framework:** Next.js 16 (App Router), React 19
+- **Database (Metadata):** Neon PostgreSQL with Prisma ORM
+- **In-Memory State:** Upstash Redis Serverless
 - **Real-Time Signaling:** Socket.io
-- **P2P Networking:** Native WebRTC (RTCPeerConnection + RTCDataChannel)
+- **P2P Networking:** Native WebRTC (RTCPeerConnection and RTCDataChannel)
 - **Security:** JSON Web Tokens (JWT), Web Crypto API (SHA-256)
 
-## Security and Privacy Features
+## Security and Privacy
 
 - **End-to-End Encryption (E2EE):** All file transfers occur over DTLS and SRTP secured WebRTC channels. The signaling server never processes or touches the actual file payload.
 - **Zero-Persistence Data Storage:** Files exist entirely within the volatile memory of the active browser swarm. When all peers exit a room, the file ceases to exist.
-- **Cryptographic Chunk Verification:** Senders automatically generate a SHA-256 manifest of the file. Receivers strictly verify the hash of each incoming 64KB chunk. Malicious or corrupted packets are immediately discarded.
+- **Cryptographic Chunk Verification:** Senders automatically generate a SHA-256 manifest of the file. Receivers strictly verify the hash of each incoming chunk. Malicious or corrupted packets are immediately discarded.
 - **Robust Access Control:** Real-time WebSockets are secured via JWTs issued exclusively through verified API routes, preventing unauthorized mesh eavesdropping or flooding.
 
 ## Prerequisites
@@ -64,7 +55,7 @@ To run LuminaMesh locally, ensure the following are installed:
    ```
 
 2. **Environment Configuration**
-   Create a `.env` file and configure your database and Redis credentials:
+   Create a `.env.local` file and configure your database and Redis credentials:
    ```env
    DATABASE_URL="postgresql://user:password@neon-host/database"
    UPSTASH_REDIS_REST_URL="https://your-url.upstash.io"
@@ -81,19 +72,28 @@ To run LuminaMesh locally, ensure the following are installed:
    ```
 
 4. **Start the Development Server**
-   Start the hybrid Next.js + Socket.io custom server:
+   Start the hybrid Next.js and Socket.io custom server:
    ```bash
    npm run dev
    ```
    The application will be accessible at `http://localhost:3000`.
 
-## Usage
+## How It Works (Application Flow)
 
-1. Navigate to `/upload` and drop a file to share
-2. Copy the generated room link and share it with recipients
-3. Recipients open the link and automatically join the swarm
-4. Files download from **all available peers simultaneously** — not just the original sender
-5. After download completes, recipients continue seeding to help other peers
+LuminaMesh converts standard browser clients into active swarm nodes in a few simple steps:
+
+1. **Upload Phase:** 
+   Navigate to `/upload` and drop a file to share. The client chunks the file into 64KB pieces and hashes each piece to create a master manifest.
+2. **Room Creation:** 
+   The manifest and file metadata are sent to the Next.js API. The server creates a unique room ID, stores the metadata in PostgreSQL, and generates a secure JWT token for room access.
+3. **Swarm Initialization:** 
+   The uploader automatically connects to the Socket.io signaling server using their JWT. They enter a "seeding" state, waiting for receiver peers to join.
+4. **Peer Connection:** 
+   Recipients open the generated room link (`/room/[id]`). The client fetches the file metadata to understand the file size and chunk count.
+5. **Full-Mesh Transfer:**
+   Once connected to the room via Socket.io, new peers establish direct WebRTC data channels with the original seeder and any other connected peers. Files download from all available peers simultaneously, scaling the available bandwidth automatically.
+6. **Re-seeding:** 
+   After a download completes, the recipient client retains the assembled blob and continues to serve chunks to newly joined peers to support the swarm's health.
 
 ## License
 
