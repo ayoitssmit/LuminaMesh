@@ -1,66 +1,84 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import styles from "./home.module.css";
+
+export default function HomePage() {
+  const [roomInput, setRoomInput] = useState("");
+  const router = useRouter();
+
+  const handleJoin = () => {
+    const id = roomInput.trim();
+    if (id) {
+      router.push("/room/" + id);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleJoin();
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className={styles.container}>
+      <div className={styles.content}>
+        <p className={styles.brand}>LuminaMesh</p>
+        <h1 className={styles.title}>Share files directly between browsers</h1>
+        <p className={styles.subtitle}>
+          No uploads to a server. No size limits. Files travel
+          <span className={styles.highlight}> peer-to-peer </span>
+          through an encrypted mesh network, and vanish when you close the tab.
+        </p>
+
+        <div className={styles.actions}>
+          <Link href="/upload" className={styles.uploadBtn}>
+            Upload a File
+          </Link>
+
+          <div className={styles.divider}>
+            <span className={styles.dividerLine} />
+            <span>or join a room</span>
+            <span className={styles.dividerLine} />
+          </div>
+
+          <div className={styles.joinRow}>
+            <input
+              className={styles.joinInput}
+              placeholder="Paste a Room ID"
+              value={roomInput}
+              onChange={(e) => setRoomInput(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <button className={styles.joinBtn} onClick={handleJoin}>
+              Join
+            </button>
+          </div>
         </div>
-      </main>
+
+        <div className={styles.features}>
+          <div className={styles.feature}>
+            <p className={styles.featureTitle}>Zero Persistence</p>
+            <p className={styles.featureDesc}>
+              Files exist only in browser memory. Nothing is stored on any server.
+            </p>
+          </div>
+          <div className={styles.feature}>
+            <p className={styles.featureTitle}>End-to-End Encrypted</p>
+            <p className={styles.featureDesc}>
+              All transfers use WebRTC with DTLS/SRTP encryption by default.
+            </p>
+          </div>
+          <div className={styles.feature}>
+            <p className={styles.featureTitle}>Mesh Network</p>
+            <p className={styles.featureDesc}>
+              Multiple peers share chunks simultaneously for faster downloads.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p className={styles.footer}>Built with Next.js, WebRTC, and Socket.io</p>
     </div>
   );
 }

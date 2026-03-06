@@ -1,0 +1,54 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.15), rgba(0, 212, 255, 0.1));
+  border: 1px solid rgba(124, 92, 252, 0.2);
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #7c5cfc;
+  letter-spacing: 0.04em;
+  font-family: var(--font-geist-mono);
+  flex-shrink: 0;
+}
+
+.info {
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #ededed;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  font-size: 0.78rem;
+  color: #888;
+  margin-top: 0.15rem;
+}
+
+.roomId {
+  font-size: 0.7rem;
+  color: #555;
+  margin-top: 0.25rem;
+  font-family: var(--font-geist-mono);
+}

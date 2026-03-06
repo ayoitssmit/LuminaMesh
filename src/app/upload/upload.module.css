@@ -1,0 +1,219 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  font-family: var(--font-geist-sans);
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: #888;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+
+/* Drop Zone */
+.dropZone {
+  width: 100%;
+  max-width: 520px;
+  border: 2px dashed #333;
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.dropZone:hover,
+.dropZoneActive {
+  border-color: #7c5cfc;
+  background: rgba(124, 92, 252, 0.05);
+}
+
+.dropIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.dropText {
+  font-size: 1rem;
+  color: #aaa;
+}
+
+.dropHint {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 0.5rem;
+}
+
+/* Progress Section */
+.progressSection {
+  width: 100%;
+  max-width: 520px;
+  margin-top: 2rem;
+}
+
+.fileName {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.fileSize {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 1rem;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: #222;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c5cfc, #00d4ff);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-size: 0.8rem;
+  color: #888;
+  text-align: right;
+}
+
+/* Room Info */
+.roomCard {
+  width: 100%;
+  max-width: 520px;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 12px;
+}
+
+.roomLabel {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+
+.roomLink {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.roomUrl {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #ededed;
+  font-family: var(--font-geist-mono);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copyBtn {
+  padding: 0.6rem 1rem;
+  background: #7c5cfc;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.copyBtn:hover {
+  background: #6a4de0;
+}
+
+/* Stats Row */
+.stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.statValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ededed;
+}
+
+.statLabel {
+  font-size: 0.7rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Seeding Status */
+.seedingBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(0, 212, 100, 0.1);
+  border: 1px solid rgba(0, 212, 100, 0.3);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #00d464;
+}
+
+.seedingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00d464;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Error */
+.error {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 60, 60, 0.1);
+  border: 1px solid rgba(255, 60, 60, 0.3);
+  border-radius: 8px;
+  color: #ff5555;
+  font-size: 0.85rem;
+  max-width: 520px;
+  width: 100%;
+}
