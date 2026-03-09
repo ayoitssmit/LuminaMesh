@@ -71,12 +71,28 @@ To run LuminaMesh locally, ensure the following are installed:
    npx prisma db push
    ```
 
-4. **Start the Development Server**
-   Start the hybrid Next.js and Socket.io custom server:
+4. **Run the Development Server (for UI edits)**
+   Start the Next.js dev server:
    ```bash
    npm run dev
    ```
+   *Note: In development mode, Next.js hot-reloading may disrupt active WebRTC connections and clear browser state.*
+
+5. **Run the Production Server (for testing P2P transfers)**
+   To test stable transfers without Hot Module Replacement (HMR) interrupting the active socket and memory state, build and run the production server:
+   ```bash
+   npm run build
+   $env:NODE_ENV="production"; npm start # On Windows PowerShell
+   # OR
+   NODE_ENV=production npm start # On Mac/Linux
+   ```
    The application will be accessible at `http://localhost:3000`.
+
+## Architecture & Resiliency
+
+- **Dropped Connection Handling:** The WebRTC data channels exist independently of the signaling server. If the Next.js/Socket.io server restarts, active file transfers will continue uninterrupted between peers. 
+- **Graceful Reconnection:** When the signaling server comes back online, clients automatically reconnect to the socket without tearing down their existing WebRTC mesh.
+- **Zero-Persistence Safety Net:** Rooms and metadata are purely stored in Redis and PostgreSQL for signaling. When a room drops to 0 peers, the server applies a 1-minute grace period before permanently wiping the metadata to allow transient disconnects to recover smoothly.
 
 ## How It Works (Application Flow)
 
