@@ -1,5 +1,13 @@
 # LuminaMesh
 
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![WebRTC](https://img.shields.io/badge/WebRTC-P2P-333333?logo=webrtc)
+![Socket.io](https://img.shields.io/badge/Socket.io-Signaling-010101?logo=socket.io)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)
+![PostgreSQL](https://img.shields.io/badge/Neon-PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Upstash-Redis-DC382D?logo=redis&logoColor=white)
+
 LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling server with the scalability of a client-side full-mesh swarm network, allowing users to share large files securely and efficiently directly through their browsers with zero-persistence server storage.
 
 ## Architecture Overview
