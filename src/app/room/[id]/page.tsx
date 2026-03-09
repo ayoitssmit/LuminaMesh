@@ -113,7 +113,11 @@ export default function RoomPage({ params }: PageProps) {
           setSeeding(true); // Keep serving chunks to the swarm
         },
         onChunkVerified: () => {},
-        onChunkFailed: () => {},
+        onChunkFailed: (index, peerId) => {
+          console.warn(`[UI] Chunk ${index} failed hash verification from ${peerId}`);
+          // The scheduler automatically drops corrupted chunks and re-requests them.
+          // We could show a toast notification here if desired.
+        },
       },
       chunkCount,
       placeholderHashes
@@ -123,11 +127,21 @@ export default function RoomPage({ params }: PageProps) {
 
     const socketClient = new SocketClient(peerManager, {
       onConnected: () => {
-        setStatus("connecting");
+        setStatus((prev) => {
+          if (prev === "complete") return "complete";
+          if (peerManagerRef.current && peerManagerRef.current.getConnectedPeers().length > 0) {
+            return "downloading";
+          }
+          return "connecting";
+        });
+        setError(null);
       },
-      onDisconnected: () => {},
+      onDisconnected: () => {
+        // UI stays in the last known state, but socketClient auto-reconnects
+        console.warn("[UI] Socket disconnected, attempting to reconnect...");
+      },
       onError: (msg) => {
-        setError("Socket error: " + msg);
+        setError(`Connection issue: ${msg}`);
       },
       onPeerJoined: () => {},
       onPeerLeft: () => {},

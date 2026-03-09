@@ -126,9 +126,11 @@ export default function UploadPage() {
     const socketClient = new SocketClient(peerManager, {
       onConnected: () => {
         setSeeding(true);
+        setError(null);
       },
       onDisconnected: () => {
         setSeeding(false);
+        setError(null);
       },
       onError: (msg) => {
         setError("Socket error: " + msg);

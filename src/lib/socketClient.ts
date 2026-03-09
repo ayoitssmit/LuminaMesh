@@ -40,6 +40,10 @@ export class SocketClient {
 
     this.socket = io(serverUrl, {
       auth: { token },
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     this.socket.on("connect", () => {
@@ -53,12 +57,23 @@ export class SocketClient {
       this.events.onError(err.message);
     });
 
-    // A new peer entered the room — we initiate the WebRTC handshake
+    this.socket.io.on("reconnect_failed", () => {
+      console.error("[SocketClient] Reconnection failed completely.");
+      this.events.onError("Connection lost permanently.");
+      this.disconnect();
+    });
+
+    // A new peer entered the room — we are NOT the initiator.
+    // We wait for them to send us an offer, because they receive our ID in "existing-peers".
     this.socket.on("peer-joined", (peerId: string) => {
       console.log("[SocketClient] peer-joined:", peerId);
+      if (this.peerManager.hasPeer(peerId)) {
+        console.log(`[SocketClient] Already connected to ${peerId}, ignoring peer-joined`);
+        return;
+      }
       this.events.onPeerJoined(peerId);
-      // We are the initiator since we were here first
-      this.peerManager.createPeer(peerId, true);
+      // DO NOT initiate WebRTC handshake here to prevent crossed offers!
+      // The new peer will initiate to us.
     });
 
     // Full-Mesh: We just joined — server tells us who's already here.

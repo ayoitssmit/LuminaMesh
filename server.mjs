@@ -3,8 +3,10 @@ import next from "next";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { Redis } from "@upstash/redis";
+import { PrismaClient } from "@prisma/client";
 
 const dev = process.env.NODE_ENV !== "production";
+const prisma = new PrismaClient();
 const hostname = "localhost";
 const port = parseInt(process.env.PORT || "3000", 10);
 
@@ -116,6 +118,34 @@ app.prepare().then(() => {
           const key = `room:peers:${roomId}`;
           await redis.srem(key, peerId);
           console.log(`[-] ${peerId} left ${roomId}`);
+
+          // Room Expiration Logic: Check if room is completely empty
+          const remainingPeers = await redis.scard(key);
+          if (remainingPeers === 0) {
+            console.log(`[!] Room ${roomId} is empty. Scheduling zero-persistence cleanup in 1 minute...`);
+            
+            setTimeout(async () => {
+              // Double check if peers re-joined during the timeout
+              const peersNow = await redis.scard(key);
+              if (peersNow !== 0) {
+                console.log(`[!] Room ${roomId} cleanup aborted: peers re-joined.`);
+                return;
+              }
+
+              // 1. Delete tracking key from Redis
+              await redis.del(key);
+              
+              // 2. Delete metadata from PostgreSQL to prevent future joins
+              try {
+                await prisma.fileMetadata.delete({
+                  where: { roomId }
+                });
+                console.log(`[OK] Room ${roomId} metadata completely wiped from DB.`);
+              } catch (dbErr) {
+                console.warn(`[WARN] Could not delete room ${roomId} from DB:`, dbErr.message);
+              }
+            }, 60000); // 1 minute grace period for reconnects/reloads
+          }
         }
 
         // Only notify the room if this was a REAL disconnect
