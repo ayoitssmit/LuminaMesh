@@ -37,6 +37,8 @@ Unlike traditional star-topology file sharing, LuminaMesh implements a BitTorren
 - **In-Memory State:** Upstash Redis Serverless
 - **Real-Time Signaling:** Socket.io
 - **P2P Networking:** Native WebRTC (RTCPeerConnection and RTCDataChannel)
+- **Client Storage:** IndexedDB (via Dexie.js)
+- **File System:** Native FileSystem Access API
 - **Security:** JSON Web Tokens (JWT), Web Crypto API (SHA-256)
 
 ## Security and Privacy
@@ -101,6 +103,13 @@ To run LuminaMesh locally, ensure the following are installed:
 - **Dropped Connection Handling:** The WebRTC data channels exist independently of the signaling server. If the Next.js/Socket.io server restarts, active file transfers will continue uninterrupted between peers. 
 - **Graceful Reconnection:** When the signaling server comes back online, clients automatically reconnect to the socket without tearing down their existing WebRTC mesh.
 - **Zero-Persistence Safety Net:** Rooms and metadata are purely stored in Redis and PostgreSQL for signaling. When a room drops to 0 peers, the server applies a 1-minute grace period before permanently wiping the metadata to allow transient disconnects to recover smoothly.
+
+## Memory Management & Resumable Downloads
+
+- **Direct-to-Disk Streaming:** To prevent "Out of Memory" (OOM) browser crashes, large files (>500MB) bypass the browser's RAM entirely and stream directly to the user's hard drive using the FileSystem Access API.
+- **IndexedDB Caching:** All incoming chunks are immediately cached securely in the browser's local IndexedDB NoSQL storage table.
+- **Resumable Transfers:** If a user accidentally reloads, disconnects, or closes the tab, the application can instantly resume from the exact previous percentage by restoring the bitfield from IndexedDB.
+- **Garbage Collection (GC):** Temporary cache storage is automatically purged the moment a user completes their download and explicitly clicks "Save File". A passive 7-day active sweeper also runs on the application boot to clean up any abandoned incomplete downloads from the disk.
 
 ## How It Works (Application Flow)
 
