@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, use } from "react";
 import { PeerManager } from "@/lib/peerManager";
 import { SocketClient } from "@/lib/socketClient";
 import { ChunkScheduler } from "@/lib/chunkScheduler";
+import { getRecoveredBitfield, deleteSessionCache, getAllCachedChunks } from "@/lib/indexedDB";
 import styles from "./room.module.css";
 
 type FileInfo = {
@@ -30,7 +31,7 @@ export default function RoomPage({ params }: PageProps) {
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<"loading" | "connecting" | "downloading" | "complete">("loading");
+  const [status, setStatus] = useState<"loading" | "connecting" | "downloading" | "complete" | "waiting_for_permission">("loading");
   const [chunksReceived, setChunksReceived] = useState(0);
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
   const [assembledBlob, setAssembledBlob] = useState<Blob | null>(null);
@@ -40,6 +41,9 @@ export default function RoomPage({ params }: PageProps) {
   const socketClientRef = useRef<SocketClient | null>(null);
   const schedulerRef = useRef<ChunkScheduler | null>(null);
   const meshStarted = useRef(false);
+  const [fileHandleGranted, setFileHandleGranted] = useState(false);
+  const fileHandleRef = useRef<any>(null);
+  const writableRef = useRef<any>(null);
 
   // Fetch room metadata
   useEffect(() => {
@@ -68,6 +72,15 @@ export default function RoomPage({ params }: PageProps) {
   // Connect to mesh once we have room data
   useEffect(() => {
     if (!roomData || meshStarted.current) return;
+
+    const fileSize = parseInt(roomData.file.size, 10);
+    const isLargeFile = fileSize > 500 * 1024 * 1024; // > 500 MB
+
+    if (isLargeFile && !fileHandleGranted) {
+      setStatus("waiting_for_permission");
+      return;
+    }
+
     meshStarted.current = true;
 
     const chunkCount = roomData.file.chunkCount;
@@ -98,67 +111,112 @@ export default function RoomPage({ params }: PageProps) {
       },
     });
 
-    const scheduler = new ChunkScheduler(
-      peerManager,
-      {
-        onProgress: (have) => {
-          setChunksReceived(have);
+    // We load the bitfield asynchronously before starting the mesh
+    getRecoveredBitfield(roomData.file.masterHash, chunkCount).then((initialBitfield) => {
+      const scheduler = new ChunkScheduler(
+        peerManager,
+        {
+          onProgress: (have) => {
+            setChunksReceived(have);
+          },
+          onComplete: async (allChunks) => {
+            try {
+              if (writableRef.current) {
+                // Large File: Stream is already writing directly to the disk, just close it
+                await writableRef.current.close().catch(console.error);
+                setAssembledBlob(null);
+                
+                // For Large Files, the final file is saved on disk. It is safe to purge now.
+                await deleteSessionCache(roomData.file.masterHash);
+              } else {
+                // Small File: Retrieve all chunks from IndexedDB cache and assemble Blob
+                // WE DO NOT PURGE YET. We wait for the user to explicitly click "Save File"
+                const cachedChunks = await getAllCachedChunks(roomData.file.masterHash);
+                const blob = new Blob(cachedChunks, {
+                  type: roomData.file.mimeType || "application/octet-stream",
+                });
+                setAssembledBlob(blob);
+              }
+            } catch (err) {
+              console.error("Failed to complete assembly:", err);
+            }
+
+            setStatus("complete");
+            setSeeding(true); // Keep serving chunks to the swarm
+          },
+          onChunkVerified: () => {},
+          onChunkFailed: (index, peerId) => {
+            console.warn(`[UI] Chunk ${index} failed hash verification from ${peerId}`);
+          },
         },
-        onComplete: (allChunks) => {
-          const blob = new Blob(allChunks, {
-            type: roomData.file.mimeType || "application/octet-stream",
+        chunkCount,
+        placeholderHashes,
+        roomData.file.masterHash,
+        initialBitfield,
+        {
+          chunkSize: 64 * 1024,
+          fileHandle: fileHandleRef.current || undefined,
+          writable: writableRef.current || undefined
+        }
+      );
+
+      // If we recovered a 100% complete bitfield, immediately trigger assembly and purge!
+      // We don't need to start the scheduler's gossip loop for downloading, just seeding.
+      if (initialBitfield.size === chunkCount) {
+         console.log("[UI] Recovered 100% of chunks from DB! Assembling immediately...");
+         scheduler.events.onComplete(scheduler.chunks as ArrayBuffer[]);
+      }
+
+      scheduler.start();
+      schedulerRef.current = scheduler;
+      
+      const socketClient = new SocketClient(peerManager, {
+        onConnected: () => {
+          setStatus((prev) => {
+            if (prev === "complete") return "complete";
+            if (peerManagerRef.current && peerManagerRef.current.getConnectedPeers().length > 0) {
+              return "downloading";
+            }
+            return "connecting";
           });
-          setAssembledBlob(blob);
-          setStatus("complete");
-          setSeeding(true); // Keep serving chunks to the swarm
+          setError(null);
         },
-        onChunkVerified: () => {},
-        onChunkFailed: (index, peerId) => {
-          console.warn(`[UI] Chunk ${index} failed hash verification from ${peerId}`);
-          // The scheduler automatically drops corrupted chunks and re-requests them.
-          // We could show a toast notification here if desired.
+        onDisconnected: () => {
+          console.warn("[UI] Socket disconnected, attempting to reconnect...");
         },
-      },
-      chunkCount,
-      placeholderHashes
-    );
+        onError: (msg) => {
+          setError(`Connection issue: ${msg}`);
+        },
+        onPeerJoined: () => {},
+        onPeerLeft: () => {},
+      }, roomData.peerId);
 
-    scheduler.start();
-
-    const socketClient = new SocketClient(peerManager, {
-      onConnected: () => {
-        setStatus((prev) => {
-          if (prev === "complete") return "complete";
-          if (peerManagerRef.current && peerManagerRef.current.getConnectedPeers().length > 0) {
-            return "downloading";
-          }
-          return "connecting";
-        });
-        setError(null);
-      },
-      onDisconnected: () => {
-        // UI stays in the last known state, but socketClient auto-reconnects
-        console.warn("[UI] Socket disconnected, attempting to reconnect...");
-      },
-      onError: (msg) => {
-        setError(`Connection issue: ${msg}`);
-      },
-      onPeerJoined: () => {},
-      onPeerLeft: () => {},
-    }, roomData.peerId);
-
-    socketClient.connect(window.location.origin, roomData.token);
-
-    peerManagerRef.current = peerManager;
-    socketClientRef.current = socketClient;
-    schedulerRef.current = scheduler;
+      socketClient.connect(window.location.origin, roomData.token);
+      socketClientRef.current = socketClient;
+    });
 
     return () => {
       meshStarted.current = false;
-      scheduler.stop();
-      socketClient.disconnect();
+      if (schedulerRef.current) schedulerRef.current.stop();
+      if (socketClientRef.current) socketClientRef.current.disconnect();
     };
-  }, [roomData]);
+  }, [roomData, fileHandleGranted]);
+
+  const handleGrantPermission = async () => {
+    if (!roomData) return;
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: roomData.file.name,
+      });
+      const writable = await handle.createWritable();
+      fileHandleRef.current = handle;
+      writableRef.current = writable;
+      setFileHandleGranted(true);
+      setStatus("connecting");
+    } catch (err) {
+      console.error("User denied permission", err);
+    }
+  };
 
   const formatSize = (bytes: number | string) => {
     const n = typeof bytes === "string" ? parseInt(bytes, 10) : bytes;
@@ -172,7 +230,7 @@ export default function RoomPage({ params }: PageProps) {
     ? Math.round((chunksReceived / roomData.file.chunkCount) * 100)
     : 0;
 
-  const downloadFile = useCallback(() => {
+  const downloadFile = useCallback(async () => {
     if (!assembledBlob || !roomData) return;
     const url = URL.createObjectURL(assembledBlob);
     const a = document.createElement("a");
@@ -182,6 +240,16 @@ export default function RoomPage({ params }: PageProps) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    
+    // Now that the user has explicitly requested the file to be saved to their OS, we purge DB
+    try {
+      console.log("[UI] User clicked Save File. Purging IndexedDB...");
+      await deleteSessionCache(roomData.file.masterHash);
+      setAssembledBlob(null); // Clear RAM blob and trigger UI re-render confirming save
+      console.log("[UI] DB Purge complete.");
+    } catch (err) {
+      console.error("[UI] Failed to purge IndexedDB after download", err);
+    }
   }, [assembledBlob, roomData]);
 
   if (loading) {
@@ -237,6 +305,17 @@ export default function RoomPage({ params }: PageProps) {
           </div>
         </div>
 
+        {status === "waiting_for_permission" && (
+          <div style={{ marginTop: "24px", padding: "16px", backgroundColor: "rgba(255,165,0,0.1)", border: "1px solid rgba(255,165,0,0.3)", borderRadius: "8px", textAlign: "center" }}>
+            <p style={{ color: "#ffa500", marginBottom: "16px", fontSize: "0.95rem" }}>
+              This file is very large (over 500 MB). We will stream it directly to your disk to prevent crashing your browser.
+            </p>
+            <button className={styles.downloadBtn} onClick={handleGrantPermission}>
+              Choose Save Location to Begin
+            </button>
+          </div>
+        )}
+
         {status === "connecting" && (
           <div className={`${styles.badge} ${styles.badgeConnecting}`}>
             <span className={`${styles.pulseDot} ${styles.dotYellow}`} />
@@ -259,9 +338,15 @@ export default function RoomPage({ params }: PageProps) {
                 ? `Complete — Seeding to ${connectedPeers.length} peer(s)`
                 : "Transfer complete"}
             </div>
-            <button className={styles.downloadBtn} onClick={downloadFile}>
-              Save File
-            </button>
+            {assembledBlob ? (
+              <button className={styles.downloadBtn} onClick={downloadFile}>
+                Save File
+              </button>
+            ) : (
+              <div style={{ marginTop: "16px", color: "#22c55e", textAlign: "center", fontWeight: "500" }}>
+                File was saved directly to your disk!
+              </div>
+            )}
           </>
         )}
       </div>

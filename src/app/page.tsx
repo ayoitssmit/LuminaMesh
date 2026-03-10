@@ -1,13 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { runGarbageCollection } from "@/lib/indexedDB";
 import styles from "./home.module.css";
 
 export default function HomePage() {
   const [roomInput, setRoomInput] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    // Run garbage collection for abandoned Dexie downloads on app load
+    runGarbageCollection().catch(console.error);
+  }, []);
 
   const handleJoin = () => {
     const id = roomInput.trim();

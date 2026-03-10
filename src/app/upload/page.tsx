@@ -115,7 +115,9 @@ export default function UploadPage() {
         onChunkFailed: () => {},
       },
       manifest.totalChunks,
-      manifest.chunkHashes
+      manifest.chunkHashes,
+      manifest.masterHash,
+      new Set()
     );
 
     // We are the seeder — we have ALL chunks

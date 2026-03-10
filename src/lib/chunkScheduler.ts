@@ -1,10 +1,19 @@
 import { PeerManager, DataMessage } from "./peerManager";
+import { saveChunkToCache, getRecoveredBitfield, updateSessionInfo } from "./indexedDB";
 
 export type SchedulerEvents = {
   onProgress: (chunksHave: number, totalChunks: number) => void;
   onComplete: (assembledChunks: ArrayBuffer[]) => void;
   onChunkVerified: (index: number) => void;
   onChunkFailed: (index: number, peerId: string) => void;
+};
+
+export type PeerPerformance = {
+  avgLatency: number; // ms
+  throughput: number; // KB/s
+  activeRequests: number;
+  maxRequests: number;
+  score: number;
 };
 
 /**
@@ -16,14 +25,15 @@ export type SchedulerEvents = {
  */
 export class ChunkScheduler {
   private peerManager: PeerManager;
-  private events: SchedulerEvents;
+  public events: SchedulerEvents;
 
   // File metadata
   private totalChunks: number;
   private chunkHashes: string[]; // expected SHA-256 per chunk
+  private masterHash: string; // File identifier for IndexedDB
 
   // Local chunk store
-  private chunks: (ArrayBuffer | null)[];
+  public chunks: (ArrayBuffer | null)[];
   private haveSet: Set<number> = new Set();
 
   // What each peer has
@@ -42,17 +52,53 @@ export class ChunkScheduler {
   private pushInterval: ReturnType<typeof setInterval> | null = null;
   private pushCursors: Map<string, number> = new Map();
 
+  // Performance tracking
+  private peerPerformance: Map<string, PeerPerformance> = new Map();
+  private requestTimestamps: Map<string, { chunkIndex: number, timestamp: number }[]> = new Map();
+
+  // Direct-to-Disk options
+  private chunkSize: number;
+  private fileHandle?: FileSystemFileHandle;
+  private writable?: FileSystemWritableFileStream;
+
   constructor(
     peerManager: PeerManager,
     events: SchedulerEvents,
     totalChunks: number,
-    chunkHashes: string[]
+    chunkHashes: string[],
+    masterHash: string,
+    initialBitfield: Set<number>,
+    options?: {
+      chunkSize?: number;
+      fileHandle?: FileSystemFileHandle;
+      writable?: FileSystemWritableFileStream;
+    }
   ) {
     this.peerManager = peerManager;
+    this.chunkSize = options?.chunkSize || 64 * 1024;
+    this.fileHandle = options?.fileHandle;
+    this.writable = options?.writable;
     this.events = events;
     this.totalChunks = totalChunks;
     this.chunkHashes = chunkHashes;
+    this.masterHash = masterHash;
     this.chunks = new Array(totalChunks).fill(null);
+
+    // Initialize with recovered state from IndexedDB
+    this.haveSet = new Set(initialBitfield);
+    
+    // Automatically fire progress to Sync UI smoothly for resumable downloads
+    if (this.haveSet.size > 0) {
+      setTimeout(() => {
+        this.events.onProgress(this.haveSet.size, this.totalChunks);
+        
+        // If they refreshed *after* getting all chunks but *before* stitching/purging closed:
+        if (this.haveSet.size === this.totalChunks && !this.completed) {
+          this.completed = true;
+          this.events.onComplete(this.chunks as ArrayBuffer[]);
+        }
+      }, 0);
+    }
   }
 
   /**
@@ -138,8 +184,9 @@ export class ChunkScheduler {
       // Push up to 3 chunks per peer per cycle (respects DataChannel backpressure)
       while (sent < 3 && checked < this.totalChunks) {
         const idx = cursor % this.totalChunks;
-        if (!peerBf.has(idx) && this.chunks[idx]) {
-          this.peerManager.sendChunk(pid, idx, new Uint8Array(this.chunks[idx]!));
+        if (!peerBf.has(idx) && this.haveSet.has(idx)) {
+          // Fire and forget via the standard payload builder 
+          this.handleChunkRequest(pid, idx);
           sent++;
         }
         cursor++;
@@ -171,7 +218,7 @@ export class ChunkScheduler {
 
       case "chunk-request":
         if (message.chunkIndex !== undefined) {
-          this.handleChunkRequest(peerId, message.chunkIndex);
+          await this.handleChunkRequest(peerId, message.chunkIndex);
         }
         break;
 
@@ -190,11 +237,35 @@ export class ChunkScheduler {
   /**
    * Respond to a chunk request from a peer.
    */
-  private handleChunkRequest(peerId: string, chunkIndex: number): void {
+  private async handleChunkRequest(peerId: string, chunkIndex: number): Promise<void> {
     const chunk = this.chunks[chunkIndex];
     if (chunk) {
       this.peerManager.sendChunk(peerId, chunkIndex, new Uint8Array(chunk));
+      return;
     }
+
+    // Direct-to-Disk seeding: read from FileSystem
+    if (this.fileHandle && this.haveSet.has(chunkIndex)) {
+      try {
+        const file = await this.fileHandle.getFile();
+        const start = chunkIndex * this.chunkSize;
+        const end = Math.min(start + this.chunkSize, file.size);
+        const slice = file.slice(start, end);
+        const buffer = await slice.arrayBuffer();
+        this.peerManager.sendChunk(peerId, chunkIndex, new Uint8Array(buffer));
+        return;
+      } catch (err) {
+        console.error("Failed to read chunk from disk for seeding", err);
+      }
+    }
+
+    // IndexedDB seeding: if not in memory or FS, retrieve from Cache
+    import("./indexedDB").then(async ({ getCachedChunk }) => {
+       const cachedChunk = await getCachedChunk(this.masterHash, chunkIndex);
+       if (cachedChunk) {
+         this.peerManager.sendChunk(peerId, chunkIndex, new Uint8Array(cachedChunk));
+       }
+    }).catch(console.error);
   }
 
   /**
@@ -206,6 +277,9 @@ export class ChunkScheduler {
     data: ArrayBuffer
   ): Promise<void> {
     this.pendingRequests.delete(chunkIndex);
+
+    // Stop the stopwatch and update performance
+    this.updatePeerPerformance(peerId, chunkIndex);
 
     // Already have this chunk
     if (this.haveSet.has(chunkIndex)) return;
@@ -221,7 +295,42 @@ export class ChunkScheduler {
     }
 
     // Store verified chunk
-    this.chunks[chunkIndex] = data;
+    if (this.writable) {
+      try {
+        await this.writable.write({
+          type: "write",
+          position: chunkIndex * this.chunkSize,
+          data
+        });
+        // We do NOT store in this.chunks array to save memory
+      } catch (err) {
+        console.error("Failed to write chunk to disk", err);
+        this.events.onChunkFailed(chunkIndex, peerId);
+        return;
+      }
+    } else {
+      try {
+        // Save to IndexedDB cache
+        await saveChunkToCache(this.masterHash, chunkIndex, data);
+        
+        // Save metadata ping for Garbage Collection
+        // Note: In production you might want to debounce this so you aren't doing 
+        // a metadata write per 64KB chunk (which is thousands of writes per second),
+        // but for safety we will update the session.
+        if (chunkIndex % 50 === 0) {
+           // We pass a dummy roomId, IndexedDB cares mostly about lastModified timestamp
+           updateSessionInfo(this.masterHash, "active-room").catch(console.error); 
+        }
+
+      } catch (err) {
+        console.error("Failed to write chunk to IndexedDB", err);
+        // Do not broadcast that we have this chunk since DB storage failed
+        this.events.onChunkFailed(chunkIndex, peerId);
+        return;
+      }
+    }
+
+    // Critical: Only update our bitfield and gossip to the swarm *after* the chunk is reliably saved
     this.haveSet.add(chunkIndex);
     this.events.onChunkVerified(chunkIndex);
     this.events.onProgress(this.haveSet.size, this.totalChunks);
@@ -247,6 +356,50 @@ export class ChunkScheduler {
   }
 
   /**
+   * Stop the stopwatch and calculate throughput and latency.
+   */
+  private updatePeerPerformance(peerId: string, chunkIndex: number): void {
+    const timestamps = this.requestTimestamps.get(peerId);
+    if (!timestamps) return;
+
+    const requestIndex = timestamps.findIndex(t => t.chunkIndex === chunkIndex);
+    if (requestIndex === -1) return;
+
+    const { timestamp: startTime } = timestamps[requestIndex];
+    timestamps.splice(requestIndex, 1); // remove from pending
+
+    const duration = Date.now() - startTime;
+    if (duration <= 0) return;
+
+    const latency = duration;
+    // (ChunkSize in KB) / (Duration in seconds) = KB/s
+    const throughput = (this.chunkSize / 1024) / (duration / 1000);
+
+    const perf = this.peerPerformance.get(peerId) || {
+      avgLatency: latency,
+      throughput: throughput,
+      activeRequests: 0,
+      maxRequests: 5,
+      score: 50,
+    };
+
+    // Rolling average (80% old, 20% new)
+    perf.avgLatency = (perf.avgLatency * 0.8) + (latency * 0.2);
+    perf.throughput = (perf.throughput * 0.8) + (throughput * 0.2);
+
+    // Dynamic Score = (Throughput * 10) / Latency
+    // Example Fiber: (10,000 * 10) / 20 = 5000
+    // Example 3G: (100 * 10) / 500 = 2
+    perf.score = (perf.throughput * 10) / Math.max(perf.avgLatency, 1);
+
+    // Map Score to Quota Window (between 1 and 25)
+    perf.maxRequests = Math.max(1, Math.min(25, Math.floor(perf.score / 10)));
+    if (perf.activeRequests > 0) perf.activeRequests--;
+
+    this.peerPerformance.set(peerId, perf);
+  }
+
+  /**
    * Broadcast our full bitfield to all connected peers.
    */
   private broadcastBitfield(): void {
@@ -269,8 +422,20 @@ export class ChunkScheduler {
 
     const now = Date.now();
     for (const [idx, timestamp] of this.pendingRequests.entries()) {
-      if (now - timestamp > 2000) { // Reduced from 5000ms to 2000ms for faster failover
-        this.pendingRequests.delete(idx); 
+      // Timeout: 2.5 seconds. If a request takes this long, it's a "2G stall".
+      if (now - timestamp > 2500) { 
+        this.pendingRequests.delete(idx);
+        
+        // Decrement active requests for whoever held this
+        for (const [pid, timestamps] of this.requestTimestamps.entries()) {
+          const reqIndex = timestamps.findIndex((t) => t.chunkIndex === idx);
+          if (reqIndex !== -1) {
+             timestamps.splice(reqIndex, 1);
+             const perf = this.peerPerformance.get(pid);
+             if (perf && perf.activeRequests > 0) perf.activeRequests--;
+             break;
+          }
+        }
       }
     }
 
@@ -332,29 +497,51 @@ export class ChunkScheduler {
       assigned.add(entry.index);
     }
 
-    // Round-robin across all peers: take one chunk from each peer in turn.
-    // This guarantees truly parallel dispatching across the swarm.
-    const connectedCount = this.peerManager.getConnectedPeers().length;
-    const maxRequests = Math.max(5, Math.min(connectedCount * 5, 25));
-    let requested = 0;
+    // Round-robin across all peers, but weighted by their dynamic maxRequests!
+    // This guarantees truly parallel dispatching across the swarm where fast peers get more chunks.
     const peerIds = Array.from(peerQueues.keys());
+    // Sort peerIds by their performance score descending, so we prioritize assigning chunks to fast peers
+    peerIds.sort((a, b) => {
+      const scoreA = this.peerPerformance.get(a)?.score || 50;
+      const scoreB = this.peerPerformance.get(b)?.score || 50;
+      return scoreB - scoreA;
+    });
+
     const cursors = new Map<string, number>();
     for (const pid of peerIds) cursors.set(pid, 0);
 
     let progress = true;
-    while (requested < maxRequests && progress) {
+    while (progress) {
       progress = false;
       for (const pid of peerIds) {
-        if (requested >= maxRequests) break;
         const queue = peerQueues.get(pid)!;
         const cursor = cursors.get(pid)!;
-        if (cursor < queue.length) {
+        
+        let perf = this.peerPerformance.get(pid);
+        if (!perf) {
+          perf = { avgLatency: 100, throughput: 100, activeRequests: 0, maxRequests: 5, score: 50 };
+          this.peerPerformance.set(pid, perf);
+        }
+
+        // Keep giving this peer chunks until they hit their limit or run out of rare chunks they can serve
+        while (cursor < queue.length && perf.activeRequests < perf.maxRequests) {
           const chunkIdx = queue[cursor];
+          
           this.peerManager.requestChunk(pid, chunkIdx);
           this.pendingRequests.set(chunkIdx, Date.now());
+          
+          // Start the stopwatch for this specific chunk
+          let timestamps = this.requestTimestamps.get(pid);
+          if (!timestamps) {
+            timestamps = [];
+            this.requestTimestamps.set(pid, timestamps);
+          }
+          timestamps.push({ chunkIndex: chunkIdx, timestamp: Date.now() });
+          
+          perf.activeRequests++;
           cursors.set(pid, cursor + 1);
-          requested++;
           progress = true;
+          break; // break to round-robin the NEXT chunk to the next peer, sharing the load
         }
       }
     }
@@ -391,6 +578,8 @@ export class ChunkScheduler {
   removePeer(peerId: string): void {
     this.peerBitfields.delete(peerId);
     this.pushCursors.delete(peerId);
+    this.peerPerformance.delete(peerId);
+    this.requestTimestamps.delete(peerId);
     
     // We don't easily track *which* chunk went to *which* peer in pendingRequests
     // natively, but we can just aggressively timeout ALL currently pending requests 
