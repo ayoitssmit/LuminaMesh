@@ -125,7 +125,7 @@ export class ChunkScheduler {
     this.gossipInterval = setInterval(() => {
       this.broadcastBitfield();
       this.requestNextChunks();
-    }, 500); // 500ms — faster gossip for quicker swarm convergence
+    }, 150); // 150ms — exceptionally fast polling for high-throughput stream resumption
   }
 
   stop(): void {
@@ -183,8 +183,8 @@ export class ChunkScheduler {
       let sent = 0;
       let checked = 0;
 
-      // Push up to 3 chunks per peer per cycle (respects DataChannel backpressure)
-      while (sent < 3 && checked < this.totalChunks) {
+      // Push up to 200 chunks per peer per cycle (respects DataChannel backpressure)
+      while (sent < 200 && checked < this.totalChunks) {
         const idx = cursor % this.totalChunks;
         if (!peerBf.has(idx) && this.haveSet.has(idx)) {
           // Fire and forget via the standard payload builder 
@@ -417,13 +417,12 @@ export class ChunkScheduler {
     perf.avgLatency = (perf.avgLatency * 0.8) + (latency * 0.2);
     perf.throughput = (perf.throughput * 0.8) + (throughput * 0.2);
 
-    // Dynamic Score = (Throughput * 10) / Latency
-    // Example Fiber: (10,000 * 10) / 20 = 5000
-    // Example 3G: (100 * 10) / 500 = 2
-    perf.score = (perf.throughput * 10) / Math.max(perf.avgLatency, 1);
+    // Dynamic Score = (Throughput * 20) / Latency
+    perf.score = (perf.throughput * 20) / Math.max(perf.avgLatency, 1);
 
-    // Map Score to Quota Window (between 1 and 25)
-    perf.maxRequests = Math.max(1, Math.min(25, Math.floor(perf.score / 10)));
+    // Map Score to Quota Window (between 1 and 500 requests at a time)
+    // 500 requests * 64KB = 32MB streaming window, letting high-speed networks fly
+    perf.maxRequests = Math.max(6, Math.min(500, Math.floor(perf.score / 5)));
     if (perf.activeRequests > 0) perf.activeRequests--;
 
     this.peerPerformance.set(peerId, perf);
