@@ -10,7 +10,7 @@
 
 LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling server with the infinite scalability of a client-side full-mesh swarm network. It allows users to share multi-gigabyte files securely and efficiently directly through their browsers with zero-persistence server storage.
 
-## 🚀 Key Features and Capabilities
+## Key Features and Capabilities
 
 - **Infinite File Size Support:** Securely stream files of any size (tested 10GB+) directly from browser to browser without relying on cloud storage or hitting upload limits.
 - **Full-Mesh Swarm Routing:** Downloads scale exponentially. The more peers that join a room, the faster the file distributes among the swarm using simultaneous multi-source fetching.
@@ -22,7 +22,7 @@ LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing 
 
 ---
 
-## 🏗 Architecture Overview
+## Architecture Overview
 
 LuminaMesh operates on a highly resilient dual-layer architecture:
 
@@ -42,7 +42,7 @@ Unlike traditional star-topology file sharing, LuminaMesh implements a BitTorren
 
 ---
 
-## 🧠 Memory Management & Resiliency
+## Memory Management & Resiliency
 
 Working with enormous files in a browser environment requires extreme memory precision. LuminaMesh implements industry-leading safety protocols:
 
@@ -53,7 +53,7 @@ Working with enormous files in a browser environment requires extreme memory pre
 
 ---
 
-## 🛠 Technology Stack
+## Technology Stack
 
 - **Frontend Framework:** Next.js 16 (App Router), React 19
 - **Database (Metadata):** Neon PostgreSQL with Prisma ORM
@@ -66,7 +66,7 @@ Working with enormous files in a browser environment requires extreme memory pre
 
 ---
 
-## 🚀 Local Development Setup
+## Local Development Setup
 
 To run LuminaMesh locally, ensure you have Node.js (v20+), a Neon PostgreSQL Database URL, and an Upstash Redis REST URL.
 
@@ -106,7 +106,7 @@ To run LuminaMesh locally, ensure you have Node.js (v20+), a Neon PostgreSQL Dat
 
 ---
 
-## 🌊 Application Flow (How It Works)
+## Application Flow (How It Works)
 
 LuminaMesh converts standard browser clients into active swarm nodes in a few simple steps:
 
