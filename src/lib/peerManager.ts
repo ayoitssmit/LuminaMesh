@@ -172,13 +172,13 @@ export class PeerManager {
       (raw: Uint8Array) => {
         try {
           const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
-          const metaLen = view.getUint16(0);
-          const metaBytes = raw.subarray(2, 2 + metaLen);
+          const metaLen = view.getUint32(0);
+          const metaBytes = raw.subarray(4, 4 + metaLen);
           const text = new TextDecoder().decode(metaBytes);
           const message: DataMessage = JSON.parse(text);
 
-          if (raw.byteLength > 2 + metaLen) {
-            message.data = raw.subarray(2 + metaLen);
+          if (raw.byteLength > 4 + metaLen) {
+            message.data = raw.subarray(4 + metaLen);
           }
 
           this.handlers.onData(peerId, message);
@@ -221,14 +221,14 @@ export class PeerManager {
       try {
         const { data, ...meta } = message;
         const metaBytes = new TextEncoder().encode(JSON.stringify(meta));
-        const payloadLength = 2 + metaBytes.length + (data ? data.length : 0);
+        const payloadLength = 4 + metaBytes.length + (data ? data.length : 0);
         const payload = new Uint8Array(payloadLength);
         const view = new DataView(payload.buffer);
         
-        view.setUint16(0, metaBytes.length);
-        payload.set(metaBytes, 2);
+        view.setUint32(0, metaBytes.length);
+        payload.set(metaBytes, 4);
         if (data) {
-          payload.set(data, 2 + metaBytes.length);
+          payload.set(data, 4 + metaBytes.length);
         }
         
         peer.send(payload);
