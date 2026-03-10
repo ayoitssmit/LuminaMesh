@@ -8,29 +8,52 @@
 ![PostgreSQL](https://img.shields.io/badge/Neon-PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Upstash-Redis-DC382D?logo=redis&logoColor=white)
 
-LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling server with the scalability of a client-side full-mesh swarm network, allowing users to share large files securely and efficiently directly through their browsers with zero-persistence server storage.
+LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling server with the infinite scalability of a client-side full-mesh swarm network. It allows users to share multi-gigabyte files securely and efficiently directly through their browsers with zero-persistence server storage.
 
-## Architecture Overview
+## 🚀 Key Features and Capabilities
 
-LuminaMesh operates on a dual-layer architecture:
+- **Infinite File Size Support:** Securely stream files of any size (tested 10GB+) directly from browser to browser without relying on cloud storage or hitting upload limits.
+- **Full-Mesh Swarm Routing:** Downloads scale exponentially. The more peers that join a room, the faster the file distributes among the swarm using simultaneous multi-source fetching.
+- **Resumable Downloads:** Accidentally close the tab midway? LuminaMesh instantly recovers your exact progress using local IndexedDB caching and resumes downloading the remaining chunks from the swarm. 
+- **Direct-to-Disk Streaming:** Zero Out-of-Memory (OOM) browser crashes. Massive files bypass the browser's RAM entirely, writing chunks directly onto the user's hard drive via the Native FileSystem Access API.
+- **End-to-End Encrypted (E2EE):** All transfers occur over strict DTLS/SRTP WebRTC Data Channels. The server never payload-decrypts or hosts your files.
+- **WebRTC Smart Throttling:** Network backpressure is natively managed. The SCTP buffer is dynamically monitored to prevent packet drops and main-thread freezing on slow networks.
+- **Zero-Persistence Safety:** Files exist entirely within the volatile memory of the active browser swarm. When a room hits zero peers, all transient signaling metadata permanently vanishes.
 
-1. **The Signaling Server (Nexus):**
-   A custom Node.js server wrapping Next.js and Socket.io. The server manages WebRTC signaling (offers, answers, and ICE candidates) to facilitate connection handshakes between peers globally. On joining, every new peer receives a list of all existing peers in the room, enabling full-mesh WebRTC connections where every node can communicate directly with every other node.
+---
 
-2. **The Client Mesh (Swarm):**
-   Once connected via the signaling server, peers communicate directly over WebRTC data channels in a full-mesh topology. The mesh network utilizes a gossip protocol to announce and request available file chunks dynamically from the swarm.
+## 🏗 Architecture Overview
 
-### Full-Mesh Swarm Protocol
+LuminaMesh operates on a highly resilient dual-layer architecture:
 
+### 1. The Signaling Server (Nexus)
+A robust Node.js server wrapping Next.js and Socket.io. The server purely manages WebRTC signaling (SDP offers, answers, and ICE candidates) to facilitate connection handshakes globally. Upon joining, every peer receives a list of all existing peers in the room, enabling full-mesh WebRTC connections where every node directly interfaces with every other node.
+
+### 2. The Client Mesh (Swarm)
+Once connected via the signaling server, peers communicate directly over WebRTC data channels in a full-mesh topology. The mesh network utilizes a highly-optimized gossip protocol to announce available file chunks dynamically across the swarm.
+
+#### Full-Mesh Swarm Protocol
 Unlike traditional star-topology file sharing, LuminaMesh implements a BitTorrent-inspired swarm to enable concurrent, high-throughput transfers:
+- **Bitfield Gossip:** Every peer periodically announces exactly which chunks they possess to the swarm.
+- **Rarest-First Chunk Selection:** Peers prioritize downloading chunks held by the *fewest* peers, maximizing unique data availability across the network.
+- **Weighted Peer Selection:** Requests are spread evenly across all available peers using a dynamic load-balancing algorithm, heavily favoring peers with the lowest latency and highest throughput.
+- **Simultaneous Assembly:** Chunk requests are dispatched across multiple peers in parallel, multiplying transfer speeds by the number of connected nodes.
+- **Automatic Re-Seeding:** Receivers become seeders instantly. Every downloaded chunk is immediately available for redistribution.
 
-- **Bitfield Gossip:** Every peer periodically announces which chunks it has to all connected peers.
-- **Rarest-First Chunk Selection:** Peers prioritize downloading chunks that are held by the fewest peers, maximizing data availability across the swarm.
-- **Least-Loaded Peer Selection:** Chunk requests are spread evenly across all available peers using a load-balancing algorithm, preventing any single peer from becoming a bottleneck.
-- **Concurrent Multi-Source Downloads:** Chunk requests are dispatched across multiple peers simultaneously, scaling the transfer speed with the number of connected nodes.
-- **Automatic Re-Seeding:** Receivers become seeders immediately. Every downloaded chunk is available for redistribution to other peers. After completing a download, peers continue gossiping and serving chunks to keep alive the swarm.
+---
 
-## Technology Stack
+## 🧠 Memory Management & Resiliency
+
+Working with enormous files in a browser environment requires extreme memory precision. LuminaMesh implements industry-leading safety protocols:
+
+- **WebRTC SCTP Smart Throttling:** To prevent browser crashes and frozen UI threads when transferring multi-gigabyte files, LuminaMesh implements native SCTP backpressure. An asynchronous execution queue actively monitors the `RTCDataChannel.bufferedAmount`. If the buffer exceeds 16MB, the disk-read loop intelligently awaits an `onbufferedamountlow` event (triggered at 64KB) before resuming. This precise "Pull" model guarantees zero packet drops even on intensely congested networks.
+- **Direct-to-Disk Streaming:** Large files (>500MB) bypass the browser's RAM array entirely and stream directly to the user's hard drive using the FileSystem Access API.
+- **Secure IndexedDB Caching:** Incoming chunks are permanently cached efficiently in the browser's local IndexedDB NoSQL storage table via Dexie.js.
+- **Stitch-and-Purge Lifecycle (GC):** Temporary cache storage is automatically purged the exact moment a user completes their download and explicitly clicks "Save File". A passive 7-day Sweeper also runs on application boot to seamlessly clean up any abandoned/incomplete downloads from the disk.
+
+---
+
+## 🛠 Technology Stack
 
 - **Frontend Framework:** Next.js 16 (App Router), React 19
 - **Database (Metadata):** Neon PostgreSQL with Prisma ORM
@@ -38,24 +61,14 @@ Unlike traditional star-topology file sharing, LuminaMesh implements a BitTorren
 - **Real-Time Signaling:** Socket.io
 - **P2P Networking:** Native WebRTC (RTCPeerConnection and RTCDataChannel)
 - **Client Storage:** IndexedDB (via Dexie.js)
-- **File System:** Native FileSystem Access API
-- **Security:** JSON Web Tokens (JWT), Web Crypto API (SHA-256)
+- **Local Write Protocol:** Native FileSystem Access API
+- **Security & Hashes:** JSON Web Tokens (JWT), Web Crypto API (SHA-256)
 
-## Security and Privacy
+---
 
-- **End-to-End Encryption (E2EE):** All file transfers occur over DTLS and SRTP secured WebRTC channels. The signaling server never processes or touches the actual file payload.
-- **Zero-Persistence Data Storage:** Files exist entirely within the volatile memory of the active browser swarm. When all peers exit a room, the file ceases to exist.
-- **Cryptographic Chunk Verification:** Senders automatically generate a SHA-256 manifest of the file. Receivers strictly verify the hash of each incoming chunk. Malicious or corrupted packets are immediately discarded.
-- **Robust Access Control:** Real-time WebSockets are secured via JWTs issued exclusively through verified API routes, preventing unauthorized mesh eavesdropping or flooding.
+## 🚀 Local Development Setup
 
-## Prerequisites
-
-To run LuminaMesh locally, ensure the following are installed:
-- Node.js (v20 or higher recommended)
-- A Neon PostgreSQL Database URL
-- An Upstash Redis REST URL and Token
-
-## Local Development Setup
+To run LuminaMesh locally, ensure you have Node.js (v20+), a Neon PostgreSQL Database URL, and an Upstash Redis REST URL.
 
 1. **Clone the Repository**
    ```bash
@@ -75,21 +88,14 @@ To run LuminaMesh locally, ensure the following are installed:
    ```
 
 3. **Database Migration**
-   Generate the Prisma client and push the schema to your Neon database:
+   Generate the Prisma client and push the schema to your database:
    ```bash
    npx prisma generate
    npx prisma db push
    ```
 
-4. **Run the Development Server (for UI edits)**
-   Start the Next.js dev server:
-   ```bash
-   npm run dev
-   ```
-   *Note: In development mode, Next.js hot-reloading may disrupt active WebRTC connections and clear browser state.*
-
-5. **Run the Production Server (for testing P2P transfers)**
-   To test stable transfers without Hot Module Replacement (HMR) interrupting the active socket and memory state, build and run the production server:
+4. **Run the Production Server (For P2P Testing)**
+   To test stable transfers without Hot Module Replacement (HMR) interrupting the active socket and IndexedDB structures, build and run the production server:
    ```bash
    npm run build
    $env:NODE_ENV="production"; npm start # On Windows PowerShell
@@ -98,36 +104,20 @@ To run LuminaMesh locally, ensure the following are installed:
    ```
    The application will be accessible at `http://localhost:3000`.
 
-## Architecture & Resiliency
+---
 
-- **Dropped Connection Handling:** The WebRTC data channels exist independently of the signaling server. If the Next.js/Socket.io server restarts, active file transfers will continue uninterrupted between peers. 
-- **Graceful Reconnection:** When the signaling server comes back online, clients automatically reconnect to the socket without tearing down their existing WebRTC mesh.
-- **Zero-Persistence Safety Net:** Rooms and metadata are purely stored in Redis and PostgreSQL for signaling. When a room drops to 0 peers, the server applies a 1-minute grace period before permanently wiping the metadata to allow transient disconnects to recover smoothly.
-
-## Memory Management & Resumable Downloads
-
-- **WebRTC SCTP Smart Throttling:** To prevent browser crashes and frozen UI threads when transferring multi-gigabyte files, LuminaMesh implements native SCTP backpressure. An asynchronous queue actively monitors the `RTCDataChannel.bufferedAmount`. If the buffer exceeds 16MB, the disk-read loop intelligently pauses, waiting for an `onbufferedamountlow` event (triggered at 64KB) before resuming. This "Pull" model guarantees zero packet drops even on congested networks.
-- **Direct-to-Disk Streaming:** To prevent "Out of Memory" (OOM) browser crashes, large files (>500MB) bypass the browser's RAM entirely and stream directly to the user's hard drive using the FileSystem Access API.
-- **IndexedDB Caching:** All incoming chunks are immediately cached securely in the browser's local IndexedDB NoSQL storage table.
-- **Resumable Transfers:** If a user accidentally reloads, disconnects, or closes the tab, the application can instantly resume from the exact previous percentage by restoring the bitfield from IndexedDB.
-- **Garbage Collection (GC):** Temporary cache storage is automatically purged the moment a user completes their download and explicitly clicks "Save File". A passive 7-day active sweeper also runs on the application boot to clean up any abandoned incomplete downloads from the disk.
-
-## How It Works (Application Flow)
+## 🌊 Application Flow (How It Works)
 
 LuminaMesh converts standard browser clients into active swarm nodes in a few simple steps:
 
-1. **Upload Phase:** 
-   Navigate to `/upload` and drop a file to share. The client chunks the file into 64KB pieces and hashes each piece to create a master manifest.
-2. **Room Creation:** 
-   The manifest and file metadata are sent to the Next.js API. The server creates a unique room ID, stores the metadata in PostgreSQL, and generates a secure JWT token for room access.
-3. **Swarm Initialization:** 
-   The uploader automatically connects to the Socket.io signaling server using their JWT. They enter a "seeding" state, waiting for receiver peers to join.
-4. **Peer Connection:** 
-   Recipients open the generated room link (`/room/[id]`). The client fetches the file metadata to understand the file size and chunk count.
-5. **Full-Mesh Transfer:**
-   Once connected to the room via Socket.io, new peers establish direct WebRTC data channels with the original seeder and any other connected peers. Files download from all available peers simultaneously, scaling the available bandwidth automatically.
-6. **Re-seeding:** 
-   After a download completes, the recipient client retains the assembled blob and continues to serve chunks to newly joined peers to support the swarm's health.
+1. **Upload Phase:** Navigate to `/upload` and drop a file. The client slices the file into precise 64KB pieces and hashes each piece to create a SHA-256 master manifest.
+2. **Room Creation:** The manifest and metadata are dispatched to the Next.js API. The server provisions a unique room ID, lodges the metadata in PostgreSQL, and yields a secure JWT token for room access.
+3. **Swarm Initialization:** The uploader automatically websockets to the Socket.io signaling server using their JWT, entering a "seeding" state.
+4. **Peer Connection:** Recipients open the generated room link. The client retrieves the metadata to map the file topology.
+5. **Full-Mesh Transfer:** New peers securely establish direct WebRTC data channels with all connected peers. Files seamlessly materialize pulling chunks from the entire room simultaneously.
+6. **Re-seeding:** Over the course of the download, and indefinitely after completion, the recipient client retains the assembled topology and actively redistributes chunks to support the swarm's health.
+
+---
 
 ## License
 
