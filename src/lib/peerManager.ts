@@ -55,9 +55,24 @@ class NativePeer {
     }
   }
 
+  private resolveBufferWait: (() => void) | null = null;
+  // User safe limit: 16 MB. Once the buffer hits this, we pause execution.
+  private readonly MAX_BUFFER_LIMIT = 16 * 1024 * 1024;
+
   private setupDataChannel(channel: RTCDataChannel) {
     this.dc = channel;
     this.dc.binaryType = "arraybuffer";
+    
+    // Set our "Low Water Mark" Tripwire to 64 KB
+    this.dc.bufferedAmountLowThreshold = 64 * 1024;
+
+    this.dc.onbufferedamountlow = () => {
+      // Wakes up any pending "waitForBufferSpace" promises
+      if (this.resolveBufferWait) {
+        this.resolveBufferWait();
+        this.resolveBufferWait = null;
+      }
+    };
 
     this.dc.onopen = () => {
       this.onConnect();
@@ -73,6 +88,27 @@ class NativePeer {
 
     this.dc.onclose = () => this.destroy();
     this.dc.onerror = () => this.destroy();
+  }
+
+  /**
+   * Returns a promise that naturally pauses execution if the SCTP send 
+   * buffer is saturated, waking up instantly when the browser flushes it.
+   */
+  public async waitForBufferSpace(): Promise<void> {
+    if (this.destroyed || !this.dc || this.dc.readyState !== "open") return;
+
+    if (this.dc.bufferedAmount < this.MAX_BUFFER_LIMIT) {
+      return; // Fast path: There's space, send immediately
+    }
+
+    return new Promise((resolve) => {
+      // If there's already someone waiting, we queue up
+      const oldResolve = this.resolveBufferWait;
+      this.resolveBufferWait = () => {
+        if (oldResolve) oldResolve();
+        resolve();
+      };
+    });
   }
 
   public signal(data: any) {
@@ -95,12 +131,6 @@ class NativePeer {
   public send(data: Uint8Array) {
     if (this.destroyed || !this.dc || this.dc.readyState !== "open") return;
     try {
-      // Backpressure guard: if buffer exceeds 8MB, intentionally drop the packet.
-      // The gossip protocol will automatically time it out and re-request.
-      if (this.dc.bufferedAmount > 8 * 1024 * 1024) {
-        console.warn("[NativePeer] Buffer full, dropping packet to prevent overflow");
-        return;
-      }
       this.dc.send(data as unknown as ArrayBuffer);
     } catch (e) {
       console.warn("[NativePeer] Send failed (peer may be congested):", e);
@@ -175,6 +205,13 @@ export class PeerManager {
     const peer = this.peers.get(peerId);
     if (peer && !peer.destroyed) {
       peer.signal(signalData);
+    }
+  }
+
+  async waitForBufferSpace(peerId: string): Promise<void> {
+    const peer = this.peers.get(peerId);
+    if (peer && !peer.destroyed) {
+      await peer.waitForBufferSpace();
     }
   }
 

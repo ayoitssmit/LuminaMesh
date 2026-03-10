@@ -48,13 +48,17 @@ export class ChunkScheduler {
   // Gossip interval handle
   private gossipInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Push-based distribution state (seeder proactively pushes unique chunks)
-  private pushInterval: ReturnType<typeof setInterval> | null = null;
+  // Push-based distribution state
+  private pushActive: boolean = false;
   private pushCursors: Map<string, number> = new Map();
 
   // Performance tracking
   private peerPerformance: Map<string, PeerPerformance> = new Map();
   private requestTimestamps: Map<string, { chunkIndex: number, timestamp: number }[]> = new Map();
+
+  // Async Per-Peer Message Processing Queue
+  private peerMessageQueues: Map<string, DataMessage[]> = new Map();
+  private peerMessageLoopActive: Map<string, boolean> = new Map();
 
   // Direct-to-Disk options
   private chunkSize: number;
@@ -134,25 +138,23 @@ export class ChunkScheduler {
 
   /**
    * Start push-based distribution (seeder only).
-   *
-   * The seeder proactively pushes chunks to each connected peer using
-   * offset-based striping: each peer starts at a different position in
-   * the file, so everyone receives UNIQUE chunks simultaneously.
-   *
-   * Example with 500 chunks, 2 peers:
-   *   Peer A starts at offset 0:   pushes 0, 1, 2, 3...
-   *   Peer B starts at offset 250: pushes 250, 251, 252...
-   *   → Sender distributes unique chunks, peers cross-share via relay.
+   * Start automatically pushing chunks we hold to newly joined peers.
    */
   startPushing(): void {
-    if (this.pushInterval) return;
-    this.pushInterval = setInterval(() => this.pushNextChunks(), 80);
+    if (this.pushActive) return;
+    this.pushActive = true;
+    this.runPushLoop();
   }
 
   stopPushing(): void {
-    if (this.pushInterval) {
-      clearInterval(this.pushInterval);
-      this.pushInterval = null;
+    this.pushActive = false;
+  }
+
+  private async runPushLoop(): Promise<void> {
+    if (!this.pushActive) return;
+    await this.pushNextChunks();
+    if (this.pushActive) {
+      setTimeout(() => this.runPushLoop(), 80);
     }
   }
 
@@ -160,12 +162,12 @@ export class ChunkScheduler {
    * Push unique chunks to each peer using offset-based striping.
    * Each peer's cursor starts at an evenly-spaced position in the file.
    */
-  private pushNextChunks(): void {
+  private async pushNextChunks(): Promise<void> {
     const peers = this.peerManager.getConnectedPeers();
     if (peers.length === 0) return;
 
-    for (let p = 0; p < peers.length; p++) {
-      const pid = peers[p];
+    // Use Promise.all to push to all peers concurrently, but each peer waits on its own DataChannel buffer limit.
+    await Promise.all(peers.map(async (pid) => {
       const peerBf = this.peerBitfields.get(pid) || new Set();
 
       // Initialize cursor at an evenly-spaced offset so each peer
@@ -186,7 +188,7 @@ export class ChunkScheduler {
         const idx = cursor % this.totalChunks;
         if (!peerBf.has(idx) && this.haveSet.has(idx)) {
           // Fire and forget via the standard payload builder 
-          this.handleChunkRequest(pid, idx);
+          await this.handleChunkRequest(pid, idx);
           sent++;
         }
         cursor++;
@@ -194,50 +196,78 @@ export class ChunkScheduler {
       }
 
       this.pushCursors.set(pid, cursor % this.totalChunks);
-    }
+    }));
   }
 
   /**
    * Handle incoming data messages from PeerManager.
+   * Placed into a per-peer async queue to prevent WebRTC backpressure limits from causing OOM.
    */
   async handleMessage(peerId: string, message: DataMessage): Promise<void> {
-    switch (message.type) {
-      case "bitfield":
-        if (message.bitfield) {
-          this.peerBitfields.set(peerId, new Set(message.bitfield));
-        }
-        break;
-
-      case "chunk-available":
-        if (message.chunkIndex !== undefined) {
-          const peerSet = this.peerBitfields.get(peerId) || new Set();
-          peerSet.add(message.chunkIndex);
-          this.peerBitfields.set(peerId, peerSet);
-        }
-        break;
-
-      case "chunk-request":
-        if (message.chunkIndex !== undefined) {
-          await this.handleChunkRequest(peerId, message.chunkIndex);
-        }
-        break;
-
-      case "chunk-response":
-        if (message.chunkIndex !== undefined && message.data) {
-          await this.handleChunkResponse(
-            peerId,
-            message.chunkIndex,
-            new Uint8Array(message.data).buffer as ArrayBuffer
-          );
-        }
-        break;
+    if (!this.peerMessageQueues.has(peerId)) {
+      this.peerMessageQueues.set(peerId, []);
     }
+    this.peerMessageQueues.get(peerId)!.push(message);
+
+    if (!this.peerMessageLoopActive.get(peerId)) {
+      this.processPeerMessages(peerId).catch(console.error);
+    }
+  }
+
+  /**
+   * Sequentially process messages for a specific peer to respect DataChannel backpressure
+   */
+  private async processPeerMessages(peerId: string): Promise<void> {
+    this.peerMessageLoopActive.set(peerId, true);
+    const queue = this.peerMessageQueues.get(peerId);
+
+    while (queue && queue.length > 0) {
+      const message = queue.shift()!;
+      
+      switch (message.type) {
+        case "bitfield":
+          if (message.bitfield) {
+            this.peerBitfields.set(peerId, new Set(message.bitfield));
+          }
+          break;
+
+        case "chunk-available":
+          if (message.chunkIndex !== undefined) {
+            const peerSet = this.peerBitfields.get(peerId) || new Set();
+            peerSet.add(message.chunkIndex);
+            this.peerBitfields.set(peerId, peerSet);
+          }
+          break;
+
+        case "chunk-request":
+          if (message.chunkIndex !== undefined) {
+            await this.handleChunkRequest(peerId, message.chunkIndex);
+          }
+          break;
+
+        case "chunk-response":
+          if (message.chunkIndex !== undefined && message.data) {
+            await this.handleChunkResponse(
+              peerId,
+              message.chunkIndex,
+              new Uint8Array(message.data).buffer as ArrayBuffer
+            );
+          }
+          break;
+      }
+    }
+
+    this.peerMessageLoopActive.set(peerId, false);
   }
 
   /**
    * Respond to a chunk request from a peer.
    */
   private async handleChunkRequest(peerId: string, chunkIndex: number): Promise<void> {
+    // 1. SMART THROTTLING (Backpressure)
+    // Pause execution if this peer's send buffer is >16MB. Wait for 'onbufferedamountlow'.
+    await this.peerManager.waitForBufferSpace(peerId);
+
     const chunk = this.chunks[chunkIndex];
     if (chunk) {
       this.peerManager.sendChunk(peerId, chunkIndex, new Uint8Array(chunk));
