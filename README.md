@@ -106,6 +106,7 @@ To run LuminaMesh locally, ensure the following are installed:
 
 ## Memory Management & Resumable Downloads
 
+- **WebRTC SCTP Smart Throttling:** To prevent browser crashes and frozen UI threads when transferring multi-gigabyte files, LuminaMesh implements native SCTP backpressure. An asynchronous queue actively monitors the `RTCDataChannel.bufferedAmount`. If the buffer exceeds 16MB, the disk-read loop intelligently pauses, waiting for an `onbufferedamountlow` event (triggered at 64KB) before resuming. This "Pull" model guarantees zero packet drops even on congested networks.
 - **Direct-to-Disk Streaming:** To prevent "Out of Memory" (OOM) browser crashes, large files (>500MB) bypass the browser's RAM entirely and stream directly to the user's hard drive using the FileSystem Access API.
 - **IndexedDB Caching:** All incoming chunks are immediately cached securely in the browser's local IndexedDB NoSQL storage table.
 - **Resumable Transfers:** If a user accidentally reloads, disconnects, or closes the tab, the application can instantly resume from the exact previous percentage by restoring the bitfield from IndexedDB.
