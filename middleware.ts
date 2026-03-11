@@ -16,21 +16,6 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Logged in but no username set → force onboarding
-  if (
-    isLoggedIn &&
-    !session.user?.name &&
-    pathname !== "/onboarding" &&
-    !pathname.startsWith("/api")
-  ) {
-    return NextResponse.redirect(new URL("/onboarding", nextUrl));
-  }
-
-  // Logged in and has username → prevent accessing onboarding
-  if (isLoggedIn && session.user?.name && pathname === "/onboarding") {
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
-  }
-
   // Logged in + on landing page → send to dashboard
   if (isLoggedIn && pathname === "/") {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));

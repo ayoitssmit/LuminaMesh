@@ -13,27 +13,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       allowDangerousEmailAccountLinking: true,
-      profile(profile) {
-        return {
-          id: profile.sub,
-          email: profile.email,
-          image: profile.picture,
-          // Omit name to prevent overwriting custom usernames and force onboarding for new users
-        };
-      },
     }),
     GitHub({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
       allowDangerousEmailAccountLinking: true,
-      profile(profile) {
-        return {
-          id: profile.id.toString(),
-          email: profile.email,
-          image: profile.avatar_url,
-          // Omit name here too
-        };
-      },
     }),
     Credentials({
       name: "credentials",
@@ -83,21 +67,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
-        token.name = user.name; // Keep standard token.name in sync
       }
-      if (trigger === "update") {
-        if (session?.maxAge) token.maxAge = session.maxAge;
-        if (session?.name) token.name = session.name;
+      if (trigger === "update" && session?.maxAge) {
+        token.maxAge = session.maxAge;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
-      }
-      // Guarantee session name matches the updated token
-      if (session.user && token.name !== undefined) {
-        session.user.name = token.name as string | null;
       }
       return session;
     },
