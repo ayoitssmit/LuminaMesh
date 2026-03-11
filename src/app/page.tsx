@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./landing.module.css";
 
-export default function LandingPage() {
+function LandingContent() {
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+
   const [tab, setTab] = useState<"login" | "signup">("login");
 
-  // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPw, setShowLoginPw] = useState(false);
@@ -43,7 +45,7 @@ export default function LandingPage() {
     if (res?.error) {
       setLoginError("Invalid email or password.");
     } else {
-      router.push("/dashboard");
+      router.push(callbackUrl);
     }
   };
 
@@ -95,7 +97,7 @@ export default function LandingPage() {
 
   const handleOAuth = async (provider: "google" | "github") => {
     setLoading(true);
-    await signIn(provider, { callbackUrl: "/dashboard" });
+    await signIn(provider, { callbackUrl });
   };
 
   return (
@@ -239,6 +241,14 @@ export default function LandingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <Suspense>
+      <LandingContent />
+    </Suspense>
   );
 }
 

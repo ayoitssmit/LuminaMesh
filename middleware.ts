@@ -6,12 +6,14 @@ export default auth((req) => {
   const isLoggedIn = !!session;
   const { pathname } = nextUrl;
 
-  const protectedPaths = ["/dashboard", "/profile", "/onboarding"];
+  const protectedPaths = ["/dashboard", "/profile", "/onboarding", "/room"];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
-  // Not logged in → can't access protected pages
+  // Not logged in → redirect to landing page, preserve destination as callbackUrl
   if (isProtected && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/", nextUrl));
+    const loginUrl = new URL("/", nextUrl);
+    loginUrl.searchParams.set("callbackUrl", pathname + nextUrl.search);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Logged in + on landing page → send to dashboard
@@ -23,5 +25,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|room).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
