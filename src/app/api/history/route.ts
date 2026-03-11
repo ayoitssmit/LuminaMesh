@@ -14,7 +14,13 @@ export async function GET() {
     take: 100,
   });
 
-  return NextResponse.json({ history });
+  // BigInt is not JSON-serializable — convert fileSize to string
+  const serializable = history.map((entry) => ({
+    ...entry,
+    fileSize: entry.fileSize.toString(),
+  }));
+
+  return NextResponse.json({ history: serializable });
 }
 
 export async function POST(req: NextRequest) {
