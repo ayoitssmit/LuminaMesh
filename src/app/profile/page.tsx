@@ -37,6 +37,7 @@ export default function ProfilePage() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [confirmPw, setConfirmPw] = useState("");
   const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
   const [pwError, setPwError] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export default function ProfilePage() {
     });
     const data = await res.json();
     setPwSaving(false);
-    if (res.ok) { setPwMsg("Password saved successfully."); setCurrentPw(""); setNewPw(""); setConfirmPw(""); }
+    if (res.ok) { setPwMsg("Password saved successfully."); setCurrentPw(""); setNewPw(""); setConfirmPw(""); setHasPassword(true); }
     else setPwError(data.error || "Failed to save password.");
   };
 
@@ -122,7 +123,7 @@ export default function ProfilePage() {
               <input
                 className={styles.input}
                 type={showCurrentPw ? "text" : "password"}
-                placeholder="Current password (leave blank if not set yet)"
+                placeholder={hasPassword ? "Enter current password" : "Current password (leave blank if not set yet)"}
                 value={currentPw}
                 onChange={(e) => setCurrentPw(e.target.value)}
               />
