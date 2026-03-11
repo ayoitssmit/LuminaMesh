@@ -57,6 +57,8 @@ export default function ProfilePage() {
     else setNameMsg("Failed to update name.");
   };
 
+  const [isResettingPw, setIsResettingPw] = useState(false);
+
   const handlePasswordSave = async () => {
     setPwError(null); setPwMsg(null);
     if (newPw.length < 8) { setPwError("Password must be at least 8 characters."); return; }
@@ -69,7 +71,14 @@ export default function ProfilePage() {
     });
     const data = await res.json();
     setPwSaving(false);
-    if (res.ok) { setPwMsg("Password saved successfully."); setCurrentPw(""); setNewPw(""); setConfirmPw(""); setHasPassword(true); }
+    if (res.ok) { 
+      setPwMsg("Password saved successfully."); 
+      setCurrentPw(""); 
+      setNewPw(""); 
+      setConfirmPw(""); 
+      setHasPassword(true);
+      setTimeout(() => setIsResettingPw(false), 2000); 
+    }
     else setPwError(data.error || "Failed to save password.");
   };
 
@@ -82,20 +91,17 @@ export default function ProfilePage() {
       </div>
 
       <div className={styles.card}>
-        {/* Avatar */}
-        <div className={styles.avatarSection}>
-          <div className={styles.avatar}>{avatarInitial}</div>
-          <div>
-            <p className={styles.displayName}>{session?.user?.name || "No name set"}</p>
-            <p className={styles.email}>{session?.user?.email}</p>
-          </div>
+        <div className={styles.profileHeader}>
+          <div className={styles.avatarLarge}>{avatarInitial}</div>
+          <h2 className={styles.profileName}>{session?.user?.name || "No name set"}</h2>
+          <p className={styles.profileEmail}>{session?.user?.email}</p>
         </div>
 
         <div className={styles.divider} />
 
-        {/* Change Name */}
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Display Name</h3>
+          <h3 className={styles.sectionTitle}>Personal Information</h3>
+          <p className={styles.sectionHint}>Update your display name.</p>
           <div className={styles.row}>
             <input
               className={styles.input}
@@ -104,7 +110,7 @@ export default function ProfilePage() {
               placeholder="Your display name"
             />
             <button className={styles.saveBtn} onClick={handleNameSave} disabled={nameSaving}>
-              {nameSaving ? "Saving..." : "Save"}
+              {nameSaving ? "Saving..." : "Save Name"}
             </button>
           </div>
           {nameMsg && <p className={styles.successMsg}>{nameMsg}</p>}
@@ -112,55 +118,75 @@ export default function ProfilePage() {
 
         <div className={styles.divider} />
 
-        {/* Set / Change Password */}
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Email + Password Login</h3>
-          <p className={styles.sectionHint}>
-            Set a password so you can also log in with your email and password in addition to Google/GitHub.
-          </p>
-          <div className={styles.fieldGroup}>
-            <div className={styles.pwWrapper}>
-              <input
-                className={styles.input}
-                type={showCurrentPw ? "text" : "password"}
-                placeholder={hasPassword ? "Enter current password" : "Current password (leave blank if not set yet)"}
-                value={currentPw}
-                onChange={(e) => setCurrentPw(e.target.value)}
-              />
-              <button type="button" className={styles.eyeBtn} onClick={() => setShowCurrentPw((v) => !v)} tabIndex={-1}>
-                {showCurrentPw ? <EyeOff /> : <EyeOn />}
-              </button>
+          <h3 className={styles.sectionTitle}>Security</h3>
+          
+          {!isResettingPw ? (
+            <div className={styles.resetPrompt}>
+               <p className={styles.sectionHint}>
+                Manage your password to securely log in with your email.
+               </p>
+               <button className={styles.resetBtn} onClick={() => setIsResettingPw(true)}>
+                 Reset Password
+               </button>
             </div>
-            <div className={styles.pwWrapper}>
-              <input
-                className={styles.input}
-                type={showNewPw ? "text" : "password"}
-                placeholder="New password (min 8 characters)"
-                value={newPw}
-                onChange={(e) => setNewPw(e.target.value)}
-              />
-              <button type="button" className={styles.eyeBtn} onClick={() => setShowNewPw((v) => !v)} tabIndex={-1}>
-                {showNewPw ? <EyeOff /> : <EyeOn />}
-              </button>
+          ) : (
+            <div className={styles.pwForm}>
+              <p className={styles.sectionHint}>
+                Enter a new password. If you don't have one set, leave the current password blank.
+              </p>
+              <div className={styles.fieldGroup}>
+                <div className={styles.pwWrapper}>
+                  <input
+                    className={styles.input}
+                    type={showCurrentPw ? "text" : "password"}
+                    placeholder={hasPassword ? "Enter current password" : "Current password (if applicable)"}
+                    value={currentPw}
+                    onChange={(e) => setCurrentPw(e.target.value)}
+                  />
+                  <button type="button" className={styles.eyeBtn} onClick={() => setShowCurrentPw((v) => !v)} tabIndex={-1}>
+                    {showCurrentPw ? <EyeOff /> : <EyeOn />}
+                  </button>
+                </div>
+                <div className={styles.pwWrapper}>
+                  <input
+                    className={styles.input}
+                    type={showNewPw ? "text" : "password"}
+                    placeholder="New password (min 8 characters)"
+                    value={newPw}
+                    onChange={(e) => setNewPw(e.target.value)}
+                  />
+                  <button type="button" className={styles.eyeBtn} onClick={() => setShowNewPw((v) => !v)} tabIndex={-1}>
+                    {showNewPw ? <EyeOff /> : <EyeOn />}
+                  </button>
+                </div>
+                <div className={styles.pwWrapper}>
+                  <input
+                    className={styles.input}
+                    type={showConfirmPw ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    value={confirmPw}
+                    onChange={(e) => setConfirmPw(e.target.value)}
+                  />
+                  <button type="button" className={styles.eyeBtn} onClick={() => setShowConfirmPw((v) => !v)} tabIndex={-1}>
+                    {showConfirmPw ? <EyeOff /> : <EyeOn />}
+                  </button>
+                </div>
+              </div>
+              
+              {pwError && <p className={styles.errorMsg}>{pwError}</p>}
+              {pwMsg && <p className={styles.successMsg}>{pwMsg}</p>}
+              
+              <div className={styles.pwActions}>
+                <button className={styles.cancelBtn} onClick={() => { setIsResettingPw(false); setPwError(null); setPwMsg(null); }}>
+                  Cancel
+                </button>
+                <button className={styles.saveBtnFull} onClick={handlePasswordSave} disabled={pwSaving}>
+                  {pwSaving ? "Saving..." : "Save Password"}
+                </button>
+              </div>
             </div>
-            <div className={styles.pwWrapper}>
-              <input
-                className={styles.input}
-                type={showConfirmPw ? "text" : "password"}
-                placeholder="Confirm new password"
-                value={confirmPw}
-                onChange={(e) => setConfirmPw(e.target.value)}
-              />
-              <button type="button" className={styles.eyeBtn} onClick={() => setShowConfirmPw((v) => !v)} tabIndex={-1}>
-                {showConfirmPw ? <EyeOff /> : <EyeOn />}
-              </button>
-            </div>
-          </div>
-          {pwError && <p className={styles.errorMsg}>{pwError}</p>}
-          {pwMsg && <p className={styles.successMsg}>{pwMsg}</p>}
-          <button className={styles.saveBtnFull} onClick={handlePasswordSave} disabled={pwSaving}>
-            {pwSaving ? "Saving..." : "Save Password"}
-          </button>
+          )}
         </div>
       </div>
     </div>

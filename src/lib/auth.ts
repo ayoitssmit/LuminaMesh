@@ -10,13 +10,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID || process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || process.env.AUTH_GOOGLE_SECRET,
       allowDangerousEmailAccountLinking: true,
     }),
     GitHub({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!,
+      clientId: process.env.GITHUB_ID || process.env.AUTH_GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET || process.env.AUTH_GITHUB_SECRET,
       allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
@@ -67,6 +67,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
+        token.name = user.name;
+      }
+      // Handle session update (e.g. when setting username in onboarding)
+      if (trigger === "update" && session?.name) {
+        token.name = session.name;
       }
       if (trigger === "update" && session?.maxAge) {
         token.maxAge = session.maxAge;
@@ -76,6 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+        session.user.name = token.name as string | null | undefined;
       }
       return session;
     },

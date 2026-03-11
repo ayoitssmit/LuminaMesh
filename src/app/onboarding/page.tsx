@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./onboarding.module.css";
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const { update } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,7 +41,7 @@ export default function OnboardingPage() {
 
     if (res.ok) {
       await update({ name: trimmed });
-      router.push("/dashboard");
+      router.push(callbackUrl);
     } else {
       const data = await res.json();
       setError(data.error || "Failed to save username.");
@@ -75,5 +78,13 @@ export default function OnboardingPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingContent />
+    </Suspense>
   );
 }

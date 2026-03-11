@@ -16,8 +16,19 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Logged in + on landing page → send to dashboard
-  if (isLoggedIn && pathname === "/") {
+  // Logged in user without a name → MUST go to onboarding
+  if (isLoggedIn && !session.user?.name && pathname !== "/onboarding") {
+    const onboardingUrl = new URL("/onboarding", nextUrl);
+    // Don't pass callbackUrl if they were just going to / or /dashboard anyway
+    const skipPaths = ["/", "/dashboard"];
+    if (!skipPaths.includes(pathname)) {
+      onboardingUrl.searchParams.set("callbackUrl", pathname + nextUrl.search);
+    }
+    return NextResponse.redirect(onboardingUrl);
+  }
+
+  // Logged in user with a name trying to go to onboarding or landing page → send to dashboard
+  if (isLoggedIn && session.user?.name && (pathname === "/" || pathname === "/onboarding")) {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
