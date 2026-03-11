@@ -30,6 +30,8 @@ export default function UploadPage() {
   const socketClientRef = useRef<SocketClient | null>(null);
   const schedulerRef = useRef<ChunkScheduler | null>(null);
   const meshStarted = useRef(false);
+  // History tracking
+  const historyIdRef = useRef<number | null>(null);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -126,9 +128,26 @@ export default function UploadPage() {
     scheduler.startPushing(); // proactively push unique chunks to each peer
 
     const socketClient = new SocketClient(peerManager, {
-      onConnected: () => {
+      onConnected: async () => {
         setSeeding(true);
         setError(null);
+        // Record this send in history (insert once, using the returned id for future updates)
+        if (historyIdRef.current === null && manifest && selectedFile) {
+          const id = await (async () => {
+            try {
+              const { db } = await import("@/lib/indexedDB");
+              return await db.transferHistory.add({
+                direction: "sent",
+                fileName: manifest.fileName,
+                fileSize: manifest.fileSize,
+                roomId: roomInfo.roomId,
+                peers: [],
+                timestamp: Date.now(),
+              });
+            } catch { return null; }
+          })();
+          if (typeof id === "number") historyIdRef.current = id;
+        }
       },
       onDisconnected: () => {
         setSeeding(false);
@@ -154,6 +173,17 @@ export default function UploadPage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomInfo, manifest, chunks]);
+
+  // Keep the peer list in the history entry up to date as peers connect
+  useEffect(() => {
+    if (historyIdRef.current === null || connectedPeers.length === 0) return;
+    (async () => {
+      try {
+        const { db } = await import("@/lib/indexedDB");
+        await db.transferHistory.update(historyIdRef.current as number, { peers: connectedPeers });
+      } catch { /* non-critical */ }
+    })();
+  }, [connectedPeers]);
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {

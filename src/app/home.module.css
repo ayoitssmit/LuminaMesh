@@ -211,3 +211,162 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Transfer History */
+.historyPanel {
+  position: relative;
+  z-index: 1;
+  margin-top: 2.5rem;
+  width: 100%;
+  max-width: 640px;
+  background: rgba(17, 17, 17, 0.6);
+  border: 1px solid #1a1a1a;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.historyTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.clearBtn {
+  background: none;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #555;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.clearBtn:hover {
+  border-color: #7c5cfc;
+  color: #7c5cfc;
+}
+
+.historyEmpty {
+  font-size: 0.8rem;
+  color: #333;
+  text-align: center;
+  padding: 0.75rem 0;
+}
+
+.historyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.historyRow {
+  display: grid;
+  grid-template-columns: 72px 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #1c1c1c;
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+.historyRow:hover {
+  border-color: #2a2a2a;
+}
+
+.badgeSent {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: rgba(124, 92, 252, 0.15);
+  color: #907cff;
+  border: 1px solid rgba(124, 92, 252, 0.25);
+  text-align: center;
+}
+
+.badgeReceived {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: rgba(0, 200, 160, 0.12);
+  color: #00c8a0;
+  border: 1px solid rgba(0, 200, 160, 0.2);
+  text-align: center;
+}
+
+.historyInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.historyFileName {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.historyMeta {
+  font-size: 0.68rem;
+  color: #444;
+}
+
+.historyPeers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+
+.historyPeerItem {
+  font-size: 0.63rem;
+  font-family: var(--font-geist-mono);
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.historyTime {
+  font-size: 0.63rem;
+  color: #333;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .historyRow {
+    grid-template-columns: 64px 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .historyPeers,
+  .historyTime {
+    grid-column: 2;
+  }
+}

@@ -13,9 +13,20 @@ export interface SessionRecord {
   lastModified: number;
 }
 
+export interface TransferHistoryRecord {
+  id?: number; // auto-increment primary key
+  direction: 'sent' | 'received';
+  fileName: string;
+  fileSize: number;
+  roomId: string;
+  peers: string[]; // peer IDs involved in the transfer
+  timestamp: number;
+}
+
 class LuminaMeshDatabase extends Dexie {
   chunks!: EntityTable<ChunkRecord, 'id'>;
   sessions!: EntityTable<SessionRecord, 'masterHash'>;
+  transferHistory!: EntityTable<TransferHistoryRecord, 'id'>;
 
   constructor() {
     super('LuminaMeshDB');
@@ -30,6 +41,13 @@ class LuminaMeshDatabase extends Dexie {
     this.version(2).stores({
       chunks: 'id, masterHash, index',
       sessions: 'masterHash, roomId, lastModified'
+    });
+
+    // Version 3: add transfer history table
+    this.version(3).stores({
+      chunks: 'id, masterHash, index',
+      sessions: 'masterHash, roomId, lastModified',
+      transferHistory: '++id, direction, roomId, timestamp'
     });
   }
 }
@@ -141,5 +159,42 @@ export async function runGarbageCollection(maxAgeMs = 7 * 24 * 60 * 60 * 1000/* 
     }
   } catch (err) {
     console.error(`[IndexedDB GC] Failed to run garbage collection:`, err);
+  }
+}
+
+/**
+ * Record a completed file transfer in the history table.
+ */
+export async function addHistoryEntry(
+  entry: Omit<TransferHistoryRecord, 'id'>
+): Promise<void> {
+  try {
+    await db.transferHistory.add(entry);
+  } catch (err) {
+    console.error('[IndexedDB] Failed to add history entry:', err);
+  }
+}
+
+/**
+ * Retrieve all transfer history entries, newest first.
+ */
+export async function getHistory(): Promise<TransferHistoryRecord[]> {
+  try {
+    const all = await db.transferHistory.orderBy('timestamp').reverse().toArray();
+    return all;
+  } catch (err) {
+    console.error('[IndexedDB] Failed to get history:', err);
+    return [];
+  }
+}
+
+/**
+ * Clear the entire transfer history.
+ */
+export async function clearHistory(): Promise<void> {
+  try {
+    await db.transferHistory.clear();
+  } catch (err) {
+    console.error('[IndexedDB] Failed to clear history:', err);
   }
 }

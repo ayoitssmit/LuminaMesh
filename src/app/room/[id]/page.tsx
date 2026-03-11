@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, use } from "react";
 import { PeerManager } from "@/lib/peerManager";
 import { SocketClient } from "@/lib/socketClient";
 import { ChunkScheduler } from "@/lib/chunkScheduler";
-import { getRecoveredBitfield, deleteSessionCache, getAllCachedChunks } from "@/lib/indexedDB";
+import { getRecoveredBitfield, deleteSessionCache, getAllCachedChunks, addHistoryEntry } from "@/lib/indexedDB";
 import styles from "./room.module.css";
 
 type FileInfo = {
@@ -143,6 +143,16 @@ export default function RoomPage({ params }: PageProps) {
 
             setStatus("complete");
             setSeeding(true); // Keep serving chunks to the swarm
+
+            // Record this download in transfer history
+            addHistoryEntry({
+              direction: "received",
+              fileName: roomData.file.name,
+              fileSize: parseInt(roomData.file.size, 10),
+              roomId: roomData.roomId,
+              peers: peerManager.getConnectedPeers(),
+              timestamp: Date.now(),
+            }).catch(console.error);
           },
           onChunkVerified: () => {},
           onChunkFailed: (index, peerId) => {
