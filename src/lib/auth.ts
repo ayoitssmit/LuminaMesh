@@ -12,10 +12,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
     GitHub({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       name: "credentials",
@@ -31,14 +33,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: credentials.email as string },
         });
 
-        if (!user || !user.passwordHash) return null;
+        if (!user) {
+          throw new Error("Invalid email or password.");
+        }
+
+        if (!user.passwordHash) {
+          throw new Error("Please log in with Google or GitHub, or set a password in your profile.");
+        }
 
         const valid = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash
         );
 
-        if (!valid) return null;
+        if (!valid) {
+          throw new Error("Invalid email or password.");
+        }
 
         return {
           id: user.id,

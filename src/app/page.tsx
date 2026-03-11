@@ -43,7 +43,7 @@ function LandingContent() {
     setLoading(false);
 
     if (res?.error) {
-      setLoginError("Invalid email or password.");
+      setLoginError("Invalid credentials. Try Google/GitHub if you haven't set a password.");
     } else {
       router.push(callbackUrl);
     }
