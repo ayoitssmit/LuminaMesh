@@ -7,21 +7,30 @@ import styles from "./landing.module.css";
 
 export default function LandingPage() {
   const [tab, setTab] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+
+  // Login state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Signup state
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirm, setSignupConfirm] = useState("");
+  const [signupError, setSignupError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleCredentials = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    setLoginError(null);
 
     const res = await signIn("credentials", {
-      email,
-      password,
+      email: loginEmail,
+      password: loginPassword,
       rememberMe: rememberMe ? "true" : "false",
       redirect: false,
     });
@@ -29,9 +38,55 @@ export default function LandingPage() {
     setLoading(false);
 
     if (res?.error) {
-      setError("Invalid email or password. Make sure you have set a password on your profile.");
+      setLoginError("Invalid email or password.");
     } else {
       router.push("/dashboard");
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupError(null);
+
+    if (signupPassword.length < 8) {
+      setSignupError("Password must be at least 8 characters.");
+      return;
+    }
+    if (signupPassword !== signupConfirm) {
+      setSignupError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: signupEmail, password: signupPassword }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setSignupError(data.error || "Registration failed.");
+      setLoading(false);
+      return;
+    }
+
+    // Auto sign-in after registration
+    const signInRes = await signIn("credentials", {
+      email: signupEmail,
+      password: signupPassword,
+      redirect: false,
+    });
+
+    setLoading(false);
+
+    if (signInRes?.error) {
+      setSignupError("Account created but auto-login failed. Please log in manually.");
+    } else {
+      // Redirect to onboarding to set username
+      router.push("/onboarding");
     }
   };
 
@@ -80,7 +135,7 @@ export default function LandingPage() {
 
         <div className={styles.divider}>
           <span className={styles.dividerLine} />
-          <span className={styles.dividerText}>or sign in with email</span>
+          <span className={styles.dividerText}>or use email</span>
           <span className={styles.dividerLine} />
         </div>
 
@@ -88,37 +143,34 @@ export default function LandingPage() {
         <div className={styles.tabs}>
           <button
             className={`${styles.tab} ${tab === "login" ? styles.tabActive : ""}`}
-            onClick={() => { setTab("login"); setError(null); }}
+            onClick={() => { setTab("login"); setLoginError(null); }}
           >
             Log In
           </button>
           <button
             className={`${styles.tab} ${tab === "signup" ? styles.tabActive : ""}`}
-            onClick={() => { setTab("signup"); setError(null); }}
+            onClick={() => { setTab("signup"); setSignupError(null); }}
           >
             Sign Up
           </button>
         </div>
 
         {tab === "login" ? (
-          <form className={styles.form} onSubmit={handleCredentials}>
-            <p className={styles.formHint}>
-              Email + password login requires first signing in via Google or GitHub and setting a password on your profile.
-            </p>
+          <form className={styles.form} onSubmit={handleLogin}>
             <input
               className={styles.input}
               type="email"
               placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
               required
             />
             <input
               className={styles.input}
               type="password"
               placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
               required
             />
             <label className={styles.rememberRow}>
@@ -130,16 +182,42 @@ export default function LandingPage() {
               />
               <span>Remember me for 30 days</span>
             </label>
-            {error && <p className={styles.error}>{error}</p>}
+            {loginError && <p className={styles.error}>{loginError}</p>}
             <button className={styles.submitBtn} type="submit" disabled={loading}>
               {loading ? "Signing in..." : "Log In"}
             </button>
           </form>
         ) : (
-          <div className={styles.signupInfo}>
-            <p>Create your account by signing in with Google or GitHub above. No separate registration needed — your account is created automatically on first login.</p>
-            <p>After signing in, you can set an email + password on your profile for future logins.</p>
-          </div>
+          <form className={styles.form} onSubmit={handleSignup}>
+            <input
+              className={styles.input}
+              type="email"
+              placeholder="Email address"
+              value={signupEmail}
+              onChange={(e) => setSignupEmail(e.target.value)}
+              required
+            />
+            <input
+              className={styles.input}
+              type="password"
+              placeholder="Password (min 8 characters)"
+              value={signupPassword}
+              onChange={(e) => setSignupPassword(e.target.value)}
+              required
+            />
+            <input
+              className={styles.input}
+              type="password"
+              placeholder="Confirm password"
+              value={signupConfirm}
+              onChange={(e) => setSignupConfirm(e.target.value)}
+              required
+            />
+            {signupError && <p className={styles.error}>{signupError}</p>}
+            <button className={styles.submitBtn} type="submit" disabled={loading}>
+              {loading ? "Creating account..." : "Create Account"}
+            </button>
+          </form>
         )}
       </div>
     </div>
