@@ -69,7 +69,7 @@
   margin: 1.75rem 0;
 }
 
-.section { }
+
 
 .sectionTitle {
   font-size: 0.82rem;
@@ -99,6 +99,35 @@
   gap: 0.6rem;
   margin-bottom: 0.75rem;
 }
+
+.pwWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pwWrapper .input {
+  padding-right: 2.5rem;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: #333;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+  border-radius: 4px;
+}
+
+.eyeBtn:hover {
+  color: #7c5cfc;
+}
+
 
 .input {
   flex: 1;
