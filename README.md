@@ -14,7 +14,7 @@ LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing 
 
 - **Infinite File Size Support:** Securely stream files of any size (tested 10GB+) directly from browser to browser without relying on cloud storage or hitting upload limits.
 - **Full-Mesh Swarm Routing:** Downloads scale exponentially. The more peers that join a room, the faster the file distributes among the swarm using simultaneous multi-source fetching.
-- **Resumable Downloads:** Accidentally close the tab midway? LuminaMesh instantly recovers your exact progress using local IndexedDB caching and resumes downloading the remaining chunks from the swarm. 
+- **Resumable Downloads:** Accidentally close the tab midway? LuminaMesh instantly recovers your exact progress using local IndexedDB caching and resumes downloading the remaining chunks from the swarm.
 - **Direct-to-Disk Streaming:** Zero Out-of-Memory (OOM) browser crashes. Massive files bypass the browser's RAM entirely, writing chunks directly onto the user's hard drive via the Native FileSystem Access API.
 - **End-to-End Encrypted (E2EE):** All transfers occur over strict DTLS/SRTP WebRTC Data Channels. The server never payload-decrypts or hosts your files.
 - **WebRTC Smart Throttling:** Network backpressure is natively managed. The SCTP buffer is dynamically monitored to prevent packet drops and main-thread freezing on slow networks.
@@ -68,7 +68,7 @@ Working with enormous files in a browser environment requires extreme memory pre
 
 ## Local Development Setup
 
-To run LuminaMesh locally, ensure you have Node.js (v20+), a Neon PostgreSQL Database URL, and an Upstash Redis REST URL.
+To run LuminaMesh locally, ensure you have Node.js (v20+) installed. You will also need free accounts from Neon (for PostgreSQL) and Upstash (for Serverless Redis).
 
 1. **Clone the Repository**
    ```bash
@@ -78,24 +78,28 @@ To run LuminaMesh locally, ensure you have Node.js (v20+), a Neon PostgreSQL Dat
    ```
 
 2. **Environment Configuration**
-   Create a `.env.local` file and configure your database and Redis credentials:
-   ```env
-   DATABASE_URL="postgresql://user:password@neon-host/database"
-   UPSTASH_REDIS_REST_URL="https://your-url.upstash.io"
-   UPSTASH_REDIS_REST_TOKEN="your-token"
-   JWT_SECRET="your-secure-random-string"
-   NEXT_PUBLIC_APP_URL="http://localhost:3000"
+   Rename `.env.example` to `.env` or `.env.local` and configure your credentials.
+   ```bash
+   cp .env.example .env
    ```
+   *Required setups:*
+   - **PostgreSQL**: Create a free database at [Neon.tech](https://neon.tech) and get your connection string.
+   - **Redis**: Create a free Serverless Redis database at [Upstash](https://upstash.com) and get your REST URL and Token.
+   - **Authentication**: Set up OAuth apps on Google Cloud Console and GitHub Developer Settings to get Client IDs and Secrets. Generate strong random strings for `JWT_SECRET`, `AUTH_SECRET`, and `NEXTAUTH_SECRET`.
 
 3. **Database Migration**
-   Generate the Prisma client and push the schema to your database:
+   Generate the Prisma client and push the schema to your database to set up tables:
    ```bash
    npx prisma generate
    npx prisma db push
    ```
 
-4. **Run the Production Server (For P2P Testing)**
-   To test stable transfers without Hot Module Replacement (HMR) interrupting the active socket and IndexedDB structures, build and run the production server:
+4. **Run the Development Server**
+   Start the Next.js development server:
+   ```bash
+   npm run dev
+   ```
+   Alternatively, for a stable production-like environment (to test P2P transfers without HMR interrupting sockets):
    ```bash
    npm run build
    $env:NODE_ENV="production"; npm start # On Windows PowerShell
