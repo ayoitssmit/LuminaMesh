@@ -35,7 +35,7 @@
 
 .dropZone:hover,
 .dropZoneActive {
-  border-color: #7c5cfc;
+  border-color: hsla(340, 80%, 69%, 1);
   background: rgba(124, 92, 252, 0.05);
 }
 
@@ -86,7 +86,7 @@
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   border-radius: 4px;
   transition: width 0.3s ease;
 }
@@ -138,7 +138,7 @@
 
 .copyBtn {
   padding: 0.6rem 1rem;
-  background: #7c5cfc;
+  background: hsla(340, 80%, 69%, 1);
   color: #fff;
   border: none;
   border-radius: 8px;

@@ -48,7 +48,7 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #7c5cfc;
+  color: hsla(340, 80%, 69%, 1);
   margin-bottom: 1rem;
 }
 
@@ -58,7 +58,7 @@
   line-height: 1.1;
   letter-spacing: -0.03em;
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, #ededed, #7c5cfc);
+  background: linear-gradient(135deg, #ededed, hsla(340, 80%, 69%, 1));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -87,7 +87,7 @@
 
 .uploadBtn {
   padding: 0.85rem 1.5rem;
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -141,7 +141,7 @@
 }
 
 .joinInput:focus {
-  border-color: #7c5cfc;
+  border-color: hsla(340, 80%, 69%, 1);
 }
 
 .joinBtn {
@@ -159,7 +159,7 @@
 
 .joinBtn:hover {
   background: #222;
-  border-color: #7c5cfc;
+  border-color: hsla(340, 80%, 69%, 1);
 }
 
 /* Features */
@@ -252,8 +252,8 @@
 }
 
 .clearBtn:hover {
-  border-color: #7c5cfc;
-  color: #7c5cfc;
+  border-color: hsla(340, 80%, 69%, 1);
+  color: hsla(340, 80%, 69%, 1);
 }
 
 .historyEmpty {
@@ -296,7 +296,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   background: rgba(124, 92, 252, 0.15);
-  color: #907cff;
+  color: hsla(340, 80%, 75%, 1);
   border: 1px solid rgba(124, 92, 252, 0.25);
   text-align: center;
 }

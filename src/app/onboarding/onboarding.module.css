@@ -52,7 +52,7 @@
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,7 +64,7 @@
 .logoText {
   font-size: 1.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ededed, #7c5cfc);
+  background: linear-gradient(135deg, #ededed, hsla(340, 80%, 69%, 1));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -106,7 +106,7 @@
 }
 
 .input:focus {
-  border-color: #7c5cfc;
+  border-color: hsla(340, 80%, 69%, 1);
 }
 
 .input::placeholder {
@@ -125,7 +125,7 @@
 .submitBtn {
   width: 100%;
   padding: 0.78rem;
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   color: #fff;
   border: none;
   border-radius: 10px;

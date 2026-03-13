@@ -19,7 +19,7 @@
   padding: 0;
 }
 
-.back:hover { color: #7c5cfc; }
+.back:hover { color: hsla(340, 80%, 69%, 1); }
 
 .card {
   max-width: 560px;
@@ -43,7 +43,7 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -133,7 +133,7 @@
 }
 
 .eyeBtn:hover {
-  color: #7c5cfc;
+  color: hsla(340, 80%, 69%, 1);
 }
 
 .input {
@@ -151,14 +151,14 @@
 }
 
 .input:focus { 
-  border-color: #7c5cfc; 
+  border-color: hsla(340, 80%, 69%, 1); 
   background: #111;
 }
 .input::placeholder { color: #444; }
 
 .saveBtn {
   padding: 0.8rem 1.5rem;
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   border: none;
   border-radius: 10px;
   color: #fff;
@@ -237,7 +237,7 @@
 .saveBtnFull {
   flex: 2;
   padding: 0.8rem 1.5rem;
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   border: none;
   border-radius: 10px;
   color: #fff;

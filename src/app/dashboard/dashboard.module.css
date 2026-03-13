@@ -23,7 +23,7 @@
 .navBrand {
   font-size: 1rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ededed, #7c5cfc);
+  background: linear-gradient(135deg, #ededed, hsla(340, 80%, 69%, 1));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -49,13 +49,13 @@
   font-size: 0.82rem;
 }
 
-.navProfile:hover { border-color: #7c5cfc; }
+.navProfile:hover { border-color: hsla(340, 80%, 69%, 1); }
 
 .avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,7 +122,7 @@
 }
 
 .dropZone:hover, .dropZoneActive {
-  border-color: #7c5cfc;
+  border-color: hsla(340, 80%, 69%, 1);
   background: rgba(124, 92, 252, 0.04);
 }
 
@@ -175,7 +175,7 @@
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   border-radius: 4px;
   transition: width 0.2s;
 }
@@ -225,7 +225,7 @@
 
 .copyBtn {
   padding: 0.5rem 0.9rem;
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   border: none;
   border-radius: 8px;
   color: #fff;
@@ -251,7 +251,7 @@
   margin-bottom: 0.75rem;
 }
 
-.seedingActive { border-color: rgba(124, 92, 252, 0.3); color: #907cff; }
+.seedingActive { border-color: rgba(124, 92, 252, 0.3); color: hsla(340, 80%, 75%, 1); }
 
 .seedingDot {
   width: 7px;
@@ -278,7 +278,7 @@
   transition: border-color 0.2s, color 0.2s;
 }
 
-.shareAnother:hover { border-color: #7c5cfc; color: #907cff; }
+.shareAnother:hover { border-color: hsla(340, 80%, 69%, 1); color: hsla(340, 80%, 75%, 1); }
 
 .error {
   margin-top: 0.75rem;
@@ -319,7 +319,7 @@
 }
 
 .receiveBtn {
-  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
   border: none;
   border-radius: 8px;
   padding: 0 1.25rem;
@@ -413,7 +413,7 @@
   font-size: 0.65rem;
   font-weight: 700;
   background: rgba(124,92,252,0.12);
-  color: #907cff;
+  color: hsla(340, 80%, 75%, 1);
   border: 1px solid rgba(124,92,252,0.2);
   text-align: center;
 }
