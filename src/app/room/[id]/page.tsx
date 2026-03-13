@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, use } from "react";
+import { useRouter } from "next/navigation";
 import { PeerManager } from "@/lib/peerManager";
 import { SocketClient } from "@/lib/socketClient";
 import { ChunkScheduler } from "@/lib/chunkScheduler";
@@ -27,6 +28,7 @@ type PageProps = {
 };
 
 export default function RoomPage({ params }: PageProps) {
+  const router = useRouter();
   const { id: roomId } = use(params);
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,7 +146,7 @@ export default function RoomPage({ params }: PageProps) {
             setStatus("complete");
             setSeeding(true); // Keep serving chunks to the swarm
 
-            // Record this download in transfer history
+            // Record this download in transfer history locally
             addHistoryEntry({
               direction: "received",
               fileName: roomData.file.name,
@@ -152,6 +154,19 @@ export default function RoomPage({ params }: PageProps) {
               roomId: roomData.roomId,
               peers: peerManager.getConnectedPeers(),
               timestamp: Date.now(),
+            }).catch(console.error);
+
+            // Record this download in the server Postgres database so it appears on Dashboard
+            fetch("/api/history", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                direction: "received",
+                fileName: roomData.file.name,
+                fileSize: roomData.file.size,
+                roomId: roomData.roomId,
+                peers: peerManager.getConnectedPeers(),
+              }),
             }).catch(console.error);
           },
           onChunkVerified: () => {},
@@ -283,8 +298,15 @@ export default function RoomPage({ params }: PageProps) {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>LuminaMesh</h1>
-      <p className={styles.subtitle}>Peer-to-peer file transfer</p>
+      <div className={styles.header}>
+        <div>
+          <h1 className={styles.title}>LuminaMesh</h1>
+          <p className={styles.subtitle}>Peer-to-peer file transfer</p>
+        </div>
+        <button className={styles.backBtn} onClick={() => router.push("/dashboard")}>
+          Back to Dashboard
+        </button>
+      </div>
 
       <div className={styles.fileCard}>
         <p className={styles.fileName}>{roomData.file.name}</p>

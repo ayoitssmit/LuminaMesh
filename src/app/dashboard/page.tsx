@@ -35,6 +35,9 @@ export default function DashboardPage() {
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
   const [seeding, setSeeding] = useState(false);
 
+  // Receive state
+  const [receiveInput, setReceiveInput] = useState("");
+
   // History state
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
@@ -177,6 +180,27 @@ export default function DashboardPage() {
     if (roomUrl) { navigator.clipboard.writeText(roomUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }
   };
 
+  const handleReceive = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receiveInput.trim()) return;
+
+    let roomId = receiveInput.trim();
+    // Extract ID if a full URL was pasted
+    try {
+      if (roomId.startsWith("http")) {
+        const url = new URL(roomId);
+        const parts = url.pathname.split("/").filter(Boolean);
+        if (parts[0] === "room" && parts[1]) {
+           roomId = parts[1];
+        }
+      }
+    } catch(err) {
+      // Not a valid URL, treat as just the room ID
+    }
+
+    router.push(`/room/${roomId}`);
+  };
+
   const avatarInitial = session?.user?.name?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
 
   return (
@@ -246,8 +270,28 @@ export default function DashboardPage() {
           {(uploadError || chunkerError) && <div className={styles.error}>{uploadError || chunkerError}</div>}
         </section>
 
-        {/* History Panel */}
+        {/* Receive Panel */}
         <section className={styles.panel}>
+          <h2 className={styles.panelTitle}>Receive a File</h2>
+          <form className={styles.receiveForm} onSubmit={handleReceive}>
+            <input
+              type="text"
+              placeholder="Paste room link or ID here..."
+              className={styles.receiveInput}
+              value={receiveInput}
+              onChange={(e) => setReceiveInput(e.target.value)}
+            />
+            <button type="submit" className={styles.receiveBtn} disabled={!receiveInput.trim()}>
+              Join Room
+            </button>
+          </form>
+          <p className={styles.receiveHint}>
+            Ask the sender to share their room link. Files will stream directly to your device.
+          </p>
+        </section>
+
+        {/* History Panel */}
+        <section className={`${styles.panel} ${styles.historyPanel}`}>
           <div className={styles.historyHeader}>
             <h2 className={styles.panelTitle}>Transfer History</h2>
           </div>
