@@ -290,6 +290,66 @@
   border-radius: 8px;
 }
 
+/* Receive form */
+.receiveForm {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.receiveInput {
+  flex: 1;
+  background: #09090b;
+  border: 1px solid #1a1a1a;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  color: #eee;
+  font-size: 0.9rem;
+  font-family: var(--font-geist-sans);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.receiveInput:focus {
+  border-color: #5b40cf;
+}
+
+.receiveInput::placeholder {
+  color: #444;
+}
+
+.receiveBtn {
+  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  border: none;
+  border-radius: 8px;
+  padding: 0 1.25rem;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+.receiveBtn:hover {
+  opacity: 0.9;
+}
+
+.receiveBtn:disabled {
+  background: #1a1a1a;
+  color: #555;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.receiveHint {
+  font-size: 0.8rem;
+  color: #555;
+  line-height: 1.4;
+}
+
+.historyPanel {
+  grid-column: 1 / -1; /* Make History span full width underneath */
+}
+
 /* History */
 .historyHeader {
   display: flex;
@@ -311,6 +371,28 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* Custom Scrollbar for History */
+.historyList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.historyList::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+.historyList::-webkit-scrollbar-thumb {
+  background: rgba(124, 92, 252, 0.3);
+  border-radius: 4px;
+}
+
+.historyList::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 92, 252, 0.6);
 }
 
 .historyRow {
