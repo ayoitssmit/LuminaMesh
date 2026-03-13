@@ -44,7 +44,7 @@
 .backBtn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  border-color: hsla(340, 80%, 69%, 1);
+  border-color: hsla(208, 33%, 21%, 1);
 }
 
 .fileCard {
@@ -79,7 +79,7 @@
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
+  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
   border-radius: 4px;
   transition: width 0.3s ease;
 }
@@ -165,7 +165,7 @@
   margin-top: 1.25rem;
   width: 100%;
   padding: 0.75rem;
-  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
+  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
   color: #fff;
   border: none;
   border-radius: 10px;

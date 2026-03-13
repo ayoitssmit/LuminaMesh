@@ -50,7 +50,7 @@
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
+  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -63,7 +63,7 @@
 .logoText {
   font-size: 1.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ededed, hsla(340, 80%, 69%, 1));
+  background: linear-gradient(135deg, #ededed, hsla(208, 33%, 21%, 1));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -186,8 +186,8 @@
   color: #444;
   line-height: 1.5;
   padding: 0.6rem 0.75rem;
-  background: rgba(124, 92, 252, 0.05);
-  border: 1px solid rgba(124, 92, 252, 0.1);
+  background: hsla(208, 33%, 46%, 0.05);
+  border: 1px solid hsla(208, 33%, 46%, 0.1);
   border-radius: 8px;
 }
 
@@ -205,7 +205,7 @@
 }
 
 .input:focus {
-  border-color: hsla(340, 80%, 69%, 1);
+  border-color: hsla(208, 33%, 21%, 1);
 }
 
 .input::placeholder {
@@ -239,7 +239,7 @@
 }
 
 .eyeBtn:hover {
-  color: hsla(340, 80%, 69%, 1);
+  color: hsla(208, 33%, 21%, 1);
 }
 
 .rememberRow {
@@ -252,7 +252,7 @@
 }
 
 .checkbox {
-  accent-color: hsla(340, 80%, 69%, 1);
+  accent-color: hsla(208, 33%, 21%, 1);
   width: 15px;
   height: 15px;
   cursor: pointer;
@@ -270,7 +270,7 @@
 .submitBtn {
   width: 100%;
   padding: 0.75rem;
-  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
+  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -297,7 +297,7 @@
   gap: 0.75rem;
   padding: 1rem 0.75rem;
   background: rgba(124, 92, 252, 0.04);
-  border: 1px solid rgba(124, 92, 252, 0.1);
+  border: 1px solid hsla(208, 33%, 46%, 0.1);
   border-radius: 10px;
   font-size: 0.8rem;
   color: #666;

@@ -61,9 +61,9 @@
 .youBadge {
   margin-left: auto;
   font-size: 0.65rem;
-  color: hsla(340, 80%, 69%, 1);
-  background: rgba(124, 92, 252, 0.1);
-  border: 1px solid rgba(124, 92, 252, 0.25);
+  color: hsla(208, 33%, 21%, 1);
+  background: hsla(208, 33%, 46%, 0.1);
+  border: 1px solid hsla(208, 33%, 46%, 0.25);
   padding: 0.1rem 0.4rem;
   border-radius: 6px;
   text-transform: uppercase;

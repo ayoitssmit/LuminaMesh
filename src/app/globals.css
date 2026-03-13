@@ -52,10 +52,10 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(124, 92, 252, 0.3);
+  background: hsla(208, 33%, 46%, 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 92, 252, 0.6);
+  background: hsla(208, 33%, 46%, 0.6);
 }

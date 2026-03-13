@@ -35,8 +35,8 @@
 
 .dropZone:hover,
 .dropZoneActive {
-  border-color: hsla(340, 80%, 69%, 1);
-  background: rgba(124, 92, 252, 0.05);
+  border-color: hsla(208, 33%, 21%, 1);
+  background: hsla(208, 33%, 46%, 0.05);
 }
 
 .dropIcon {
@@ -86,7 +86,7 @@
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, hsla(340, 80%, 69%, 1) 0%, hsla(15, 93%, 71%, 1) 100%);
+  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
   border-radius: 4px;
   transition: width 0.3s ease;
 }
@@ -138,7 +138,7 @@
 
 .copyBtn {
   padding: 0.6rem 1rem;
-  background: hsla(340, 80%, 69%, 1);
+  background: hsla(208, 33%, 21%, 1);
   color: #fff;
   border: none;
   border-radius: 8px;
