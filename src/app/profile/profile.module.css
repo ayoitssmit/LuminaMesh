@@ -1,0 +1,264 @@
+.container {
+  min-height: 100vh;
+  background: #09090b;
+  padding: 2rem;
+}
+
+.header {
+  max-width: 560px;
+  margin: 0 auto 1.5rem;
+}
+
+.back {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 0;
+}
+
+.back:hover { color: #7c5cfc; }
+
+.card {
+  max-width: 560px;
+  margin: 0 auto;
+  background: rgba(15, 15, 17, 0.9);
+  border: 1px solid #111;
+  border-radius: 18px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.profileHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.avatarLarge {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(124, 92, 252, 0.4);
+}
+
+.profileName {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.25rem 0;
+}
+
+.profileEmail {
+  font-size: 0.95rem;
+  color: #888;
+  margin: 0;
+}
+
+.divider {
+  height: 1px;
+  background: #1a1a1a;
+  margin: 2rem 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #666;
+  margin: 0 0 0.5rem 0;
+}
+
+.sectionHint {
+  font-size: 0.85rem;
+  color: #555;
+  line-height: 1.5;
+  margin: 0 0 1.2rem 0;
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.pwWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pwWrapper .input {
+  padding-right: 2.5rem;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: #555;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+  border-radius: 4px;
+}
+
+.eyeBtn:hover {
+  color: #7c5cfc;
+}
+
+.input {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  background: #0d0d0f;
+  border: 1px solid #222;
+  border-radius: 10px;
+  color: #eee;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input:focus { 
+  border-color: #7c5cfc; 
+  background: #111;
+}
+.input::placeholder { color: #444; }
+
+.saveBtn {
+  padding: 0.8rem 1.5rem;
+  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.saveBtn:hover:not(:disabled) { 
+  opacity: 0.9; 
+}
+.saveBtn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.saveBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.resetPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.resetBtn {
+  padding: 0.7rem 1.2rem;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #ddd;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.resetBtn:hover {
+  background: #1a1a1a;
+  border-color: #555;
+  color: #fff;
+}
+
+.pwForm {
+  background: #0c0c0e;
+  border: 1px solid #1a1a1a;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 0.5rem;
+}
+
+.pwActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.cancelBtn {
+  padding: 0.8rem 1.5rem;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 10px;
+  color: #999;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.cancelBtn:hover {
+  background: #111;
+  color: #ddd;
+  border-color: #444;
+}
+
+.saveBtnFull {
+  flex: 2;
+  padding: 0.8rem 1.5rem;
+  background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.saveBtnFull:hover:not(:disabled) { opacity: 0.9; }
+.saveBtnFull:active:not(:disabled) { transform: translateY(1px); }
+.saveBtnFull:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.successMsg {
+  font-size: 0.85rem;
+  color: #00e5ff;
+  margin: 0.5rem 0;
+}
+
+.errorMsg {
+  font-size: 0.85rem;
+  color: #ff4757;
+  margin: 0.5rem 0;
+}
