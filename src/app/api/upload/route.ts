@@ -35,8 +35,26 @@ export async function POST(req: Request) {
       },
     });
 
-    // Update the record with its own ID as the Room ID (or generate a short code)
-    const roomId = fileMeta.id;
+    // Generate an 8-character alphanumeric room ID and ensure it is unique
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let roomId = '';
+    let isUnique = false;
+    
+    while (!isUnique) {
+      roomId = Array.from({ length: 8 })
+        .map(() => characters.charAt(Math.floor(Math.random() * characters.length)))
+        .join('');
+      
+      const existingRoom = await prisma.fileMetadata.findUnique({
+        where: { roomId }
+      });
+      
+      if (!existingRoom) {
+        isUnique = true;
+      }
+    }
+
+    // Update the record with the generated short code
     await prisma.fileMetadata.update({
       where: { id: fileMeta.id },
       data: { roomId },
