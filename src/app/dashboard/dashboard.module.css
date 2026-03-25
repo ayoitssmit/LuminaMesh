@@ -357,6 +357,24 @@
   justify-content: space-between;
 }
 
+.clearAllBtn {
+  background: none;
+  border: 1px solid #1a1a1a;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  color: #555;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clearAllBtn:hover {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.05);
+}
+
 .historyEmpty {
   font-size: 0.82rem;
   color: #2a2a2a;
@@ -397,13 +415,31 @@
 
 .historyRow {
   display: grid;
-  grid-template-columns: 68px 1fr auto auto;
+  grid-template-columns: 68px 1fr auto auto 32px;
   align-items: center;
   gap: 0.65rem;
   padding: 0.6rem 0.75rem;
   background: rgba(255,255,255,0.015);
   border: 1px solid #111;
   border-radius: 8px;
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  padding: 0.4rem;
+  border-radius: 6px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.deleteBtn:hover {
+  color: #ff6b6b;
+  background: rgba(255,107,107,0.1);
 }
 
 .badgeSent {

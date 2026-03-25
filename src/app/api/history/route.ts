@@ -48,3 +48,30 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, id: entry.id });
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (id) {
+    await prisma.transferHistory.delete({
+      where: {
+        id,
+        userId: session.user.id,
+      },
+    });
+  } else {
+    await prisma.transferHistory.deleteMany({
+      where: {
+        userId: session.user.id,
+      },
+    });
+  }
+
+  return NextResponse.json({ success: true });
+}

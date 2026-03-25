@@ -203,6 +203,22 @@ export default function DashboardPage() {
 
   const avatarInitial = session?.user?.name?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
 
+  const deleteHistory = async (id?: string) => {
+    if (id && !confirm("Delete this entry?")) return;
+    if (!id && !confirm("Clear all transfer history?")) return;
+
+    try {
+      const url = id ? `/api/history?id=${id}` : "/api/history";
+      const res = await fetch(url, { method: "DELETE" });
+      if (res.ok) {
+        if (id) setHistory((prev) => prev.filter((h) => h.id !== id));
+        else setHistory([]);
+      }
+    } catch (err) {
+      console.error("Failed to delete history:", err);
+    }
+  };
+
   return (
     <div className={styles.layout}>
       {/* Navbar */}
@@ -294,6 +310,11 @@ export default function DashboardPage() {
         <section className={`${styles.panel} ${styles.historyPanel}`}>
           <div className={styles.historyHeader}>
             <h2 className={styles.panelTitle}>Transfer History</h2>
+            {history.length > 0 && (
+              <button className={styles.clearAllBtn} onClick={() => deleteHistory()}>
+                Clear All
+              </button>
+            )}
           </div>
           {history.length === 0 ? (
             <p className={styles.historyEmpty}>No transfers yet. Share your first file above.</p>
@@ -317,6 +338,9 @@ export default function DashboardPage() {
                   <span className={styles.historyTime}>
                     {new Date(entry.createdAt).toLocaleDateString()} {new Date(entry.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
+                  <button className={styles.deleteBtn} onClick={() => deleteHistory(entry.id)} title="Delete entry">
+                    <TrashIcon />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -324,5 +348,13 @@ export default function DashboardPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
+    </svg>
   );
 }

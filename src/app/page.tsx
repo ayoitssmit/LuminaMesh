@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./landing.module.css";
+import ShaderBackground from "@/components/ui/shader-background";
 
 function LandingContent() {
   const searchParams = useSearchParams();
@@ -105,7 +106,7 @@ function LandingContent() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.bg} />
+      <ShaderBackground />
       <div className={styles.card}>
         <div className={styles.logo}>
           <span className={styles.logoMark}>L</span>
