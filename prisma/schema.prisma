@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,17 +8,17 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified DateTime?
-  name          String?
-  image         String?
-  passwordHash  String?   // Set after first OAuth login if user wants credentials login
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  files         FileMetadata[]
-  accounts      Account[]
-  sessions      Session[]
+  id              String            @id @default(cuid())
+  email           String            @unique
+  name            String?
+  image           String?
+  passwordHash    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  emailVerified   DateTime?
+  accounts        Account[]
+  files           FileMetadata[]
+  sessions        Session[]
   transferHistory TransferHistory[]
 }
 
@@ -31,12 +28,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -60,17 +57,17 @@ model VerificationToken {
 }
 
 model FileMetadata {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   name       String
   size       BigInt
   masterHash String
   chunkCount Int
   mimeType   String?
-  roomId     String?  @unique
+  roomId     String?   @unique
   uploaderId String
-  uploader   User     @relation(fields: [uploaderId], references: [id])
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
   expiresAt  DateTime?
+  uploader   User      @relation(fields: [uploaderId], references: [id])
 
   @@index([uploaderId])
   @@index([roomId])
@@ -79,11 +76,11 @@ model FileMetadata {
 model TransferHistory {
   id        String   @id @default(cuid())
   userId    String
-  direction String   // "sent" | "received"
+  direction String
   fileName  String
   fileSize  BigInt
   roomId    String
-  peers     String[] // peer IDs involved
+  peers     String[]
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

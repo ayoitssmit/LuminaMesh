@@ -43,11 +43,16 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  const passwordHash = await bcrypt.hash(newPassword, 12);
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { passwordHash },
-  });
+  try {
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { passwordHash },
+    });
 
-  return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[User Password API Error]", error);
+    return NextResponse.json({ error: "Failed to update password" }, { status: 500 });
+  }
 }

@@ -6,6 +6,7 @@ import { PeerManager } from "@/lib/peerManager";
 import { SocketClient } from "@/lib/socketClient";
 import { ChunkScheduler } from "@/lib/chunkScheduler";
 import { getRecoveredBitfield, deleteSessionCache, getAllCachedChunks, addHistoryEntry } from "@/lib/indexedDB";
+import MeshTransferVisualizer from "@/components/ui/MeshTransferVisualizer";
 import styles from "./room.module.css";
 
 type FileInfo = {
@@ -145,6 +146,7 @@ export default function RoomPage({ params }: PageProps) {
 
             setStatus("complete");
             setSeeding(true); // Keep serving chunks to the swarm
+            scheduler.startPushing(); // Actively push to remaining peers
 
             // Record this download in transfer history locally
             addHistoryEntry({
@@ -298,46 +300,10 @@ export default function RoomPage({ params }: PageProps) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
+      {status === "waiting_for_permission" ? (
+        <div className={styles.fileCard}>
           <h1 className={styles.title}>LuminaMesh</h1>
-          <p className={styles.subtitle}>Peer-to-peer file transfer</p>
-        </div>
-        <button className={styles.backBtn} onClick={() => router.push("/dashboard")}>
-          Back to Dashboard
-        </button>
-      </div>
-
-      <div className={styles.fileCard}>
-        <p className={styles.fileName}>{roomData.file.name}</p>
-        <p className={styles.fileMeta}>
-          {formatSize(roomData.file.size)} &middot; {roomData.file.chunkCount} chunks
-        </p>
-
-        <div className={styles.progressBar}>
-          <div className={styles.progressFill} style={{ width: progress + "%" }} />
-        </div>
-        <div className={styles.progressRow}>
-          <span>{chunksReceived} / {roomData.file.chunkCount} chunks</span>
-          <span>{progress}%</span>
-        </div>
-
-        <div className={styles.stats}>
-          <div className={styles.stat}>
-            <span className={styles.statValue}>{connectedPeers.length}</span>
-            <span className={styles.statLabel}>Peers</span>
-          </div>
-          <div className={styles.stat}>
-            <span className={styles.statValue}>{formatSize(roomData.file.size)}</span>
-            <span className={styles.statLabel}>File Size</span>
-          </div>
-          <div className={styles.stat}>
-            <span className={styles.statValue}>{roomData.file.mimeType || "unknown"}</span>
-            <span className={styles.statLabel}>Type</span>
-          </div>
-        </div>
-
-        {status === "waiting_for_permission" && (
+          <p className={styles.fileName}>{roomData.file.name}</p>
           <div style={{ marginTop: "24px", padding: "16px", backgroundColor: "rgba(255,165,0,0.1)", border: "1px solid rgba(255,165,0,0.3)", borderRadius: "8px", textAlign: "center" }}>
             <p style={{ color: "#ffa500", marginBottom: "16px", fontSize: "0.95rem" }}>
               This file is very large (over 500 MB). We will stream it directly to your disk to prevent crashing your browser.
@@ -346,42 +312,21 @@ export default function RoomPage({ params }: PageProps) {
               Choose Save Location to Begin
             </button>
           </div>
-        )}
-
-        {status === "connecting" && (
-          <div className={`${styles.badge} ${styles.badgeConnecting}`}>
-            <span className={`${styles.pulseDot} ${styles.dotYellow}`} />
-            Waiting for peers...
-          </div>
-        )}
-
-        {status === "downloading" && (
-          <div className={`${styles.badge} ${styles.badgeDownloading}`}>
-            <span className={`${styles.pulseDot} ${styles.dotBlue}`} />
-            Downloading from {connectedPeers.length} peer(s)
-          </div>
-        )}
-
-        {status === "complete" && (
-          <>
-            <div className={`${styles.badge} ${styles.badgeComplete}`}>
-              <span className={`${styles.pulseDot} ${styles.dotGreen}`} />
-              {seeding
-                ? `Complete — Seeding to ${connectedPeers.length} peer(s)`
-                : "Transfer complete"}
-            </div>
-            {assembledBlob ? (
-              <button className={styles.downloadBtn} onClick={downloadFile}>
-                Save File
-              </button>
-            ) : (
-              <div style={{ marginTop: "16px", color: "#22c55e", textAlign: "center", fontWeight: "500" }}>
-                File was saved directly to your disk!
-              </div>
-            )}
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <MeshTransferVisualizer
+          roomData={roomData}
+          connectedPeers={connectedPeers}
+          chunksReceived={chunksReceived}
+          totalChunks={roomData.file.chunkCount}
+          // If chunks === total we're a seeder now, but conceptually the "Sender" is the room owner
+          isSender={roomData.peerId.startsWith("seeder")}
+          transferSpeed={0} // To be implemented with chunk scheduler speed stats
+          onSave={assembledBlob ? downloadFile : undefined}
+          onClose={() => router.push("/dashboard")}
+          isComplete={status === "complete"}
+        />
+      )}
     </div>
   );
 }

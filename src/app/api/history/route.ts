@@ -8,19 +8,24 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const history = await prisma.transferHistory.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  try {
+    const history = await prisma.transferHistory.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
 
-  // BigInt is not JSON-serializable — convert fileSize to string
-  const serializable = history.map((entry) => ({
-    ...entry,
-    fileSize: entry.fileSize.toString(),
-  }));
+    // BigInt is not JSON-serializable — convert fileSize to string
+    const serializable = history.map((entry) => ({
+      ...entry,
+      fileSize: entry.fileSize.toString(),
+    }));
 
-  return NextResponse.json({ history: serializable });
+    return NextResponse.json({ history: serializable });
+  } catch (error) {
+    console.error("[History API Error]", error);
+    return NextResponse.json({ error: "Failed to load history", history: [] }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

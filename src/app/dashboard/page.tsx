@@ -51,9 +51,15 @@ export default function DashboardPage() {
   // Load history on mount
   useEffect(() => {
     fetch("/api/history")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch history");
+        return r.json();
+      })
       .then((d) => setHistory(d.history || []))
-      .catch(console.error);
+      .catch((err) => {
+        console.error("Dashboard history fetch error:", err);
+        setHistory([]);
+      });
   }, []);
 
   const handleFile = useCallback(
@@ -118,7 +124,7 @@ export default function DashboardPage() {
 
     scheduler.seedAll(chunks);
     scheduler.start();
-    scheduler.startPushing();
+    scheduler.startPushing(); // Proactively serve to connected peers (with backpressure)
 
     const socketClient = new SocketClient(peerManager, {
       onConnected: async () => {

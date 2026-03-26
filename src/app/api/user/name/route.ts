@@ -13,10 +13,15 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Invalid name" }, { status: 400 });
   }
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { name: name.trim() },
-  });
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { name: name.trim() },
+    });
 
-  return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[User Name API Error]", error);
+    return NextResponse.json({ error: "Failed to update name" }, { status: 500 });
+  }
 }

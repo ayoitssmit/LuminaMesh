@@ -48,7 +48,7 @@ export class ChunkScheduler {
   // Gossip interval handle
   private gossipInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Push-based distribution state
+  // Push-based distribution state (seeder only)
   private pushActive: boolean = false;
   private pushCursors: Map<string, number> = new Map();
 
@@ -59,6 +59,10 @@ export class ChunkScheduler {
   // Async Per-Peer Message Processing Queue
   private peerMessageQueues: Map<string, DataMessage[]> = new Map();
   private peerMessageLoopActive: Map<string, boolean> = new Map();
+
+  // Throttle progress updates to prevent re-render storms
+  private progressThrottleTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastReportedHave: number = 0;
 
   // Direct-to-Disk options
   private chunkSize: number;
@@ -138,7 +142,7 @@ export class ChunkScheduler {
 
   /**
    * Start push-based distribution (seeder only).
-   * Start automatically pushing chunks we hold to newly joined peers.
+   * Proactively sends chunks to peers, respecting backpressure.
    */
   startPushing(): void {
     if (this.pushActive) return;
@@ -154,26 +158,23 @@ export class ChunkScheduler {
     if (!this.pushActive) return;
     await this.pushNextChunks();
     if (this.pushActive) {
-      setTimeout(() => this.runPushLoop(), 80);
+      setTimeout(() => this.runPushLoop(), 50);
     }
   }
 
   /**
-   * Push unique chunks to each peer using offset-based striping.
-   * Each peer's cursor starts at an evenly-spaced position in the file.
+   * Push unique chunks to each peer with proper backpressure.
+   * Each peer's cursor starts at an evenly-spaced offset so they get
+   * different regions of the file, maximizing cross-sharing later.
    */
   private async pushNextChunks(): Promise<void> {
     const peers = this.peerManager.getConnectedPeers();
     if (peers.length === 0) return;
 
-    // Use Promise.all to push to all peers concurrently, but each peer waits on its own DataChannel buffer limit.
     await Promise.all(peers.map(async (pid) => {
       const peerBf = this.peerBitfields.get(pid) || new Set();
 
-      // Initialize cursor at an evenly-spaced offset so each peer
-      // starts downloading from a different region of the file.
       if (!this.pushCursors.has(pid)) {
-        // Find how many peers already have cursors to distribute evenly
         const peerRank = this.pushCursors.size;
         const offset = Math.floor((peerRank / Math.max(peers.length, 1)) * this.totalChunks);
         this.pushCursors.set(pid, offset);
@@ -183,11 +184,10 @@ export class ChunkScheduler {
       let sent = 0;
       let checked = 0;
 
-      // Push up to 200 chunks per peer per cycle (respects DataChannel backpressure)
-      while (sent < 200 && checked < this.totalChunks) {
+      // Push up to 20 chunks per peer per cycle, awaiting backpressure each time
+      while (sent < 20 && checked < this.totalChunks) {
         const idx = cursor % this.totalChunks;
         if (!peerBf.has(idx) && this.haveSet.has(idx)) {
-          // Fire and forget via the standard payload builder 
           await this.handleChunkRequest(pid, idx);
           sent++;
         }
@@ -241,7 +241,9 @@ export class ChunkScheduler {
 
         case "chunk-request":
           if (message.chunkIndex !== undefined) {
-            await this.handleChunkRequest(peerId, message.chunkIndex);
+            // Decoupled: Handle requests asynchronously so they don't block
+            // the incoming message queue while waiting for send buffer space.
+            this.handleChunkRequest(peerId, message.chunkIndex).catch(console.error);
           }
           break;
 
@@ -363,7 +365,17 @@ export class ChunkScheduler {
     // Critical: Only update our bitfield and gossip to the swarm *after* the chunk is reliably saved
     this.haveSet.add(chunkIndex);
     this.events.onChunkVerified(chunkIndex);
-    this.events.onProgress(this.haveSet.size, this.totalChunks);
+
+    // Throttled progress update: batch UI updates to max ~5/sec instead of per-chunk
+    if (!this.progressThrottleTimer) {
+      this.progressThrottleTimer = setTimeout(() => {
+        this.progressThrottleTimer = null;
+        if (this.haveSet.size !== this.lastReportedHave) {
+          this.lastReportedHave = this.haveSet.size;
+          this.events.onProgress(this.haveSet.size, this.totalChunks);
+        }
+      }, 200);
+    }
 
     // INSTANT RELAY: Forward this chunk to ALL connected peers who don't
     // have it yet. This is the core of simultaneous inflow/outflow —
@@ -381,6 +393,12 @@ export class ChunkScheduler {
     // Keep broadcasting our bitfield so new peers can request chunks from us.
     if (this.haveSet.size === this.totalChunks && !this.completed) {
       this.completed = true;
+      // Flush any pending throttled progress update
+      if (this.progressThrottleTimer) {
+        clearTimeout(this.progressThrottleTimer);
+        this.progressThrottleTimer = null;
+      }
+      this.events.onProgress(this.haveSet.size, this.totalChunks);
       this.events.onComplete(this.chunks as ArrayBuffer[]);
     }
   }
@@ -548,7 +566,7 @@ export class ChunkScheduler {
         
         let perf = this.peerPerformance.get(pid);
         if (!perf) {
-          perf = { avgLatency: 100, throughput: 100, activeRequests: 0, maxRequests: 5, score: 50 };
+          perf = { avgLatency: 100, throughput: 100, activeRequests: 0, maxRequests: 50, score: 50 };
           this.peerPerformance.set(pid, perf);
         }
 
@@ -570,7 +588,7 @@ export class ChunkScheduler {
           perf.activeRequests++;
           cursors.set(pid, cursor + 1);
           progress = true;
-          break; // break to round-robin the NEXT chunk to the next peer, sharing the load
+          // No break — fill this peer's quota before moving to the next peer
         }
       }
     }

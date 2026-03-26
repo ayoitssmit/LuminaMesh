@@ -1,0 +1,253 @@
+/* ── Mesh Transfer Visualizer ── */
+
+.container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  overflow: hidden;
+  user-select: none;
+  z-index: 100;
+}
+
+/* Subtle radial vignette */
+.container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Grid background pattern */
+.gridBg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* SVG canvas */
+.svgCanvas {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Peer label beneath node */
+.peerLabel {
+  font-family: var(--font-geist-mono, "SF Mono", "Fira Code", monospace);
+  fill: rgba(255, 255, 255, 0.35);
+  font-size: 9px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.senderLabel {
+  fill: rgba(0, 229, 255, 0.6);
+  font-weight: 600;
+  font-size: 9px;
+}
+
+/* ── Glassmorphism Tooltip ── */
+.tooltip {
+  position: absolute;
+  z-index: 10;
+  padding: 14px 18px;
+  background: rgba(12, 12, 20, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  transform: translate(-50%, -100%);
+  margin-top: -18px;
+}
+
+.tooltipRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  font-size: 12px;
+  line-height: 1.7;
+  font-family: var(--font-geist-sans, Inter, system-ui, sans-serif);
+}
+
+.tooltipKey {
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+.tooltipVal {
+  color: #ffffff;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltipSender {
+  color: #00e5ff;
+}
+
+.tooltipReceiver {
+  color: #4d8bff;
+}
+
+/* ── Status bar at bottom ── */
+.statusBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  font-family: var(--font-geist-mono, "SF Mono", monospace);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Top Left Overlay ── */
+.topOverlay {
+  position: absolute;
+  top: 32px;
+  left: 32px;
+  z-index: 10;
+  font-family: var(--font-geist-sans);
+  pointer-events: none;
+}
+
+.overlayTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.overlayMeta {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-geist-mono);
+}
+
+/* ── Top Right Overlay ── */
+.topRightOverlay {
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  z-index: 10;
+  display: flex;
+  gap: 12px;
+}
+
+.saveSubtle {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ededed;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  pointer-events: auto;
+}
+
+.saveSubtle:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Center Save Button ── */
+.saveTrigger {
+  display: none;
+}
+
+.saveBtn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(77, 139, 255, 0.15));
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: #00e5ff;
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 229, 255, 0.1);
+  transition: all 0.2s ease;
+  pointer-events: auto;
+}
+
+.saveBtn:hover {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.3), rgba(77, 139, 255, 0.3));
+  border-color: rgba(0, 229, 255, 0.8);
+  box-shadow: 0 4px 24px rgba(0, 229, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.statusDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.statusDotActive {
+  background: #00e5ff;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+
+.statusDotIdle {
+  background: #666;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.statusLeft {
+  display: flex;
+  align-items: center;
+}
+
+.statusRight {
+  display: flex;
+  gap: 16px;
+}
+
+.statusMetric {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.statusMetricVal {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}

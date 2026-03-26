@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useChunker } from "@/lib/useChunker";
-import { PeerManager } from "@/lib/peerManager";
-import { SocketClient } from "@/lib/socketClient";
-import { ChunkScheduler } from "@/lib/chunkScheduler";
 import styles from "./upload.module.css";
 
 type RoomInfo = {
@@ -20,26 +18,16 @@ export default function UploadPage() {
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
-  const [seeding, setSeeding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Mesh engine refs (persist across renders)
-  const peerManagerRef = useRef<PeerManager | null>(null);
-  const socketClientRef = useRef<SocketClient | null>(null);
-  const schedulerRef = useRef<ChunkScheduler | null>(null);
-  const meshStarted = useRef(false);
-  // History tracking
-  const historyIdRef = useRef<number | null>(null);
+  // Wait for redirect to happen natively
+  const [redirecting, setRedirecting] = useState(false);
 
   const handleFile = useCallback(
     (file: File) => {
       setSelectedFile(file);
       setError(null);
       setRoomInfo(null);
-      setSeeding(false);
-      setConnectedPeers([]);
       processFile(file);
     },
     [processFile]
@@ -66,10 +54,12 @@ export default function UploadPage() {
       .then((data) => {
         if (data.success) {
           setRoomInfo({ roomId: data.roomId, peerId: data.peerId, token: data.token });
+          setRedirecting(true);
+          router.push(`/room/${data.roomId}`);
         } else {
           setError(data.error || "Failed to create room");
+          setUploading(false);
         }
-        setUploading(false);
       })
       .catch((err) => {
         setError(err.message);
@@ -77,113 +67,9 @@ export default function UploadPage() {
       });
   }
 
-  // When we have roomInfo + chunks, connect to Socket and start seeding
-  useEffect(() => {
-    if (!roomInfo || !manifest || !chunks || chunks.length === 0 || meshStarted.current) return;
-    meshStarted.current = true;
+  const router = useRouter();
 
-    const peerManager = new PeerManager({
-      onPeerConnected: (peerId) => {
-        setConnectedPeers((prev) => [...prev, peerId]);
-        // Send our bitfield to the new peer
-        if (schedulerRef.current) {
-          peerManager.sendBitfield(peerId, Array.from({ length: manifest.totalChunks }, (_, i) => i));
-        }
-      },
-      onPeerDisconnected: (peerId) => {
-        setConnectedPeers((prev) => prev.filter((p) => p !== peerId));
-        if (schedulerRef.current) {
-          schedulerRef.current.removePeer(peerId);
-        }
-      },
-      onSignal: (peerId, signalData) => {
-        if (socketClientRef.current) {
-          socketClientRef.current.sendSignal(peerId, signalData);
-        }
-      },
-      onData: (peerId, message) => {
-        if (schedulerRef.current) {
-          schedulerRef.current.handleMessage(peerId, message);
-        }
-      },
-    });
-
-    const scheduler = new ChunkScheduler(
-      peerManager,
-      {
-        onProgress: () => {},
-        onComplete: () => {},
-        onChunkVerified: () => {},
-        onChunkFailed: () => {},
-      },
-      manifest.totalChunks,
-      manifest.chunkHashes,
-      manifest.masterHash,
-      new Set()
-    );
-
-    // We are the seeder — we have ALL chunks
-    scheduler.seedAll(chunks);
-    scheduler.start();
-    scheduler.startPushing(); // proactively push unique chunks to each peer
-
-    const socketClient = new SocketClient(peerManager, {
-      onConnected: async () => {
-        setSeeding(true);
-        setError(null);
-        // Record this send in history (insert once, using the returned id for future updates)
-        if (historyIdRef.current === null && manifest && selectedFile) {
-          const id = await (async () => {
-            try {
-              const { db } = await import("@/lib/indexedDB");
-              return await db.transferHistory.add({
-                direction: "sent",
-                fileName: manifest.fileName,
-                fileSize: manifest.fileSize,
-                roomId: roomInfo.roomId,
-                peers: [],
-                timestamp: Date.now(),
-              });
-            } catch { return null; }
-          })();
-          if (typeof id === "number") historyIdRef.current = id;
-        }
-      },
-      onDisconnected: () => {
-        setSeeding(false);
-        setError(null);
-      },
-      onError: (msg) => {
-        setError("Socket error: " + msg);
-      },
-      onPeerJoined: () => {},
-      onPeerLeft: () => {},
-    }, roomInfo.peerId);
-
-    socketClient.connect(window.location.origin, roomInfo.token);
-
-    peerManagerRef.current = peerManager;
-    socketClientRef.current = socketClient;
-    schedulerRef.current = scheduler;
-
-    return () => {
-      meshStarted.current = false;
-      scheduler.stop();
-      socketClient.disconnect();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomInfo, manifest, chunks]);
-
-  // Keep the peer list in the history entry up to date as peers connect
-  useEffect(() => {
-    if (historyIdRef.current === null || connectedPeers.length === 0) return;
-    (async () => {
-      try {
-        const { db } = await import("@/lib/indexedDB");
-        await db.transferHistory.update(historyIdRef.current as number, { peers: connectedPeers });
-      } catch { /* non-critical */ }
-    })();
-  }, [connectedPeers]);
+  // Removed local mesh peer logic — Sender seeds from the room page itself now.
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -215,18 +101,7 @@ export default function UploadPage() {
     return (bytes / 1073741824).toFixed(2) + " GB";
   };
 
-  const roomUrl =
-    roomInfo && typeof window !== "undefined"
-      ? window.location.origin + "/room/" + roomInfo.roomId
-      : "";
-
-  const copyLink = () => {
-    if (roomUrl) {
-      navigator.clipboard.writeText(roomUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  // Use Next.js Router for programmatic navigation
 
   return (
     <div className={styles.container}>
@@ -260,8 +135,8 @@ export default function UploadPage() {
               ? "Hashing chunks... " + progress + "%"
               : uploading
               ? "Creating room..."
-              : seeding
-              ? "Seeding to " + connectedPeers.length + " peer(s)"
+              : redirecting
+              ? "Redirecting to room..."
               : progress === 100
               ? "Connecting..."
               : ""}
@@ -269,37 +144,7 @@ export default function UploadPage() {
         </div>
       )}
 
-      {roomInfo && (
-        <div className={styles.roomCard}>
-          <p className={styles.roomLabel}>Share this link</p>
-          <div className={styles.roomLink}>
-            <div className={styles.roomUrl}>{roomUrl}</div>
-            <button className={styles.copyBtn} onClick={copyLink}>
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
-
-          <div className={styles.stats}>
-            <div className={styles.stat}>
-              <span className={styles.statValue}>{connectedPeers.length}</span>
-              <span className={styles.statLabel}>Peers</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statValue}>{manifest?.totalChunks || 0}</span>
-              <span className={styles.statLabel}>Chunks</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statValue}>{selectedFile ? formatSize(selectedFile.size) : "0"}</span>
-              <span className={styles.statLabel}>File Size</span>
-            </div>
-          </div>
-
-          <div className={styles.seedingBadge}>
-            <span className={styles.seedingDot} />
-            {seeding ? "Seeding" : "Connecting..."}
-          </div>
-        </div>
-      )}
+      {/* Hidden Room Card (moved to /room/[id]) */}
 
       {(error || chunkerError) && <div className={styles.error}>{error || chunkerError}</div>}
     </div>
