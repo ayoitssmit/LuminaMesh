@@ -17,6 +17,8 @@ class NativePeer {
   private pc: RTCPeerConnection;
   private dc: RTCDataChannel | null = null;
   public destroyed = false;
+  // Queue to sequence asynchronous signaling operations and prevent WebRTC Glare crashes
+  private signalingQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private initiator: boolean,
@@ -44,10 +46,15 @@ class NativePeer {
 
     if (this.initiator) {
       this.setupDataChannel(this.pc.createDataChannel("lumina-mesh-data", { ordered: true }));
-      this.pc.createOffer().then((offer) => {
-        this.pc.setLocalDescription(offer);
-        this.onSignal({ type: "offer", sdp: offer.sdp });
-      }).catch(this.onError);
+      this.signalingQueue = this.signalingQueue.then(async () => {
+        try {
+          const offer = await this.pc.createOffer();
+          await this.pc.setLocalDescription(offer);
+          this.onSignal({ type: "offer", sdp: offer.sdp });
+        } catch (err: any) {
+          this.onError(err);
+        }
+      });
     } else {
       this.pc.ondatachannel = (event) => {
         this.setupDataChannel(event.channel);
@@ -63,8 +70,9 @@ class NativePeer {
     this.dc = channel;
     this.dc.binaryType = "arraybuffer";
     
-    // Set our "Low Water Mark" Tripwire to 64 KB
-    this.dc.bufferedAmountLowThreshold = 64 * 1024;
+    // Set our "Low Water Mark" Tripwire to 4 MB.
+    // If we wait until 64 KB, the pipe goes "dry" on high-speed fiber before we can refill it.
+    this.dc.bufferedAmountLowThreshold = 4 * 1024 * 1024;
 
     this.dc.onbufferedamountlow = () => {
       // Wakes up any pending "waitForBufferSpace" promises
@@ -114,18 +122,42 @@ class NativePeer {
   public signal(data: any) {
     if (this.destroyed) return;
 
-    if (data.type === "offer" || data.type === "answer") {
-      this.pc.setRemoteDescription(new RTCSessionDescription({ type: data.type, sdp: data.sdp })).then(() => {
-        if (data.type === "offer" && !this.initiator) {
-          this.pc.createAnswer().then((answer) => {
-            this.pc.setLocalDescription(answer);
+    this.signalingQueue = this.signalingQueue.then(async () => {
+      if (this.destroyed) return;
+
+      try {
+        if (data.type === "offer" || data.type === "answer") {
+          // Prevent "Called in wrong state: stable" crashes by ignoring answers when not expecting them
+          if (data.type === "answer" && this.pc.signalingState !== "have-local-offer") {
+            console.warn(`[NativePeer] Ignoring answer in unexpected state: ${this.pc.signalingState}`);
+            return;
+          }
+
+          await this.pc.setRemoteDescription(new RTCSessionDescription({ type: data.type, sdp: data.sdp }));
+          
+          if (data.type === "offer" && !this.initiator) {
+            const answer = await this.pc.createAnswer();
+            await this.pc.setLocalDescription(answer);
             this.onSignal({ type: "answer", sdp: answer.sdp });
-          }).catch(this.onError);
+          }
+        } else if (data.type === "candidate") {
+          try {
+            await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          } catch (candidateErr) {
+            // ICE candidates are "best effort". If one fails (e.g. wrong-state), 
+            // we ignore it rather than killing the entire peer connection.
+            console.warn("[NativePeer] Deferred/Ignored out-of-order ICE candidate.");
+          }
         }
-      }).catch(this.onError);
-    } else if (data.type === "candidate") {
-      this.pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
-    }
+      } catch (err: any) {
+        // Look specifically for the glare error on answers when stable.
+        if (err.message && err.message.includes("stable") && data.type === "answer") {
+          console.warn("[NativePeer] Suppressed stable state glare error.");
+        } else {
+          this.onError(err);
+        }
+      }
+    });
   }
 
   public send(data: Uint8Array) {
@@ -244,6 +276,10 @@ export class PeerManager {
 
   sendChunk(peerId: string, chunkIndex: number, data: Uint8Array): void {
     this.send(peerId, { type: "chunk-response", chunkIndex, data });
+  }
+
+  sendChunkAvailable(peerId: string, chunkIndex: number): void {
+    this.send(peerId, { type: "chunk-available", chunkIndex });
   }
 
   sendBitfield(peerId: string, availableChunks: number[]): void {

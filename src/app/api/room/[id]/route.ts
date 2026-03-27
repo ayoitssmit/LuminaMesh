@@ -26,9 +26,12 @@ export async function GET(req: Request, context: Context) {
       return NextResponse.json({ error: "Room or File not found" }, { status: 404 });
     }
 
-    // Generate a secure JWT for the downloade/leecher to join this specific room
-    const peerId = `peer-${Math.random().toString(36).substring(2, 9)}`;
-    const token = jwt.sign({ roomId, peerId, isSeeder: false }, process.env.JWT_SECRET!, {
+    // Detect if the authenticated user is the original uploader (Seeder)
+    const isSeeder = session.user.id === fileMeta.uploaderId;
+    const peerId = isSeeder
+      ? `seeder-${Math.random().toString(36).substring(2, 9)}`
+      : `peer-${Math.random().toString(36).substring(2, 9)}`;
+    const token = jwt.sign({ roomId, peerId, isSeeder }, process.env.JWT_SECRET!, {
       expiresIn: "24h",
     });
 

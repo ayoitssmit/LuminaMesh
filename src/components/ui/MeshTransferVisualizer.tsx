@@ -81,7 +81,7 @@ function computeLayout(
       id: pid,
       x: cx + ORBIT_R * Math.cos(angle),
       y: cy + ORBIT_R * Math.sin(angle),
-      isSender: !isSender, // if we are sender, peers are receivers and vice versa
+      isSender: pid.startsWith("seeder"), // correctly identify the seeder by its ID prefix
       order: i + 2,
       label: truncateId(pid),
     });
@@ -97,22 +97,20 @@ const ConnectionEdge = memo(function ConnectionEdge({
   x2,
   y2,
   active,
-  speed,
 }: {
   x1: number;
   y1: number;
   x2: number;
   y2: number;
   active: boolean;
-  speed: number;
 }) {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.sqrt(dx * dx + dy * dy);
   const dashLen = 40;
   const gapLen = 1000; // Large gap ensures only one streak per line
-  // Faster speed = faster animation
-  const dur = speed > 0 ? Math.max(0.4, 3 - Math.min(speed / (5 * 1024 * 1024), 2.6)) : 2.5;
+  // Fixed 2-second duration for animation to prevent React re-render overhead
+  const dur = 2.0;
 
   return (
     <g>
@@ -274,6 +272,7 @@ export default function MeshTransferVisualizer({
   const [hovered, setHovered] = useState<NodeData | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [windowSize, setWindowSize] = useState({ w: 1000, h: 800 });
+  const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -322,6 +321,18 @@ export default function MeshTransferVisualizer({
     },
     [hovered]
   );
+
+  const roomUrl = typeof window !== "undefined" 
+    ? window.location.origin + "/room/" + roomData.roomId 
+    : "";
+
+  const copyLink = () => {
+    if (roomUrl) {
+      navigator.clipboard.writeText(roomUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // Generate peer-to-peer connections (full mesh)
   const connections = useMemo(() => {
@@ -408,7 +419,6 @@ export default function MeshTransferVisualizer({
             x2={conn.to.x}
             y2={conn.to.y}
             active={isActive || progress >= 1}
-            speed={transferSpeed}
           />
         ))}
 
@@ -478,7 +488,14 @@ export default function MeshTransferVisualizer({
           {formatSize(parseInt(roomData.file.size))} &middot; {roomData.file.chunkCount} chunks
         </div>
         
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div className={styles.roomUrlGroup}>
+            <span className={styles.roomUrlText}>{roomUrl}</span>
+            <button className={styles.copySubtle} onClick={copyLink}>
+              {copied ? "Copied!" : "Copy Link"}
+            </button>
+          </div>
+          <div style={{ width: "1px", height: "16px", background: "rgba(255,255,255,0.1)", margin: "0 8px" }} />
           {isComplete && onSave && !isSender && (
             <button className={styles.saveSubtle} onClick={onSave}>Save File</button>
           )}
@@ -498,8 +515,10 @@ export default function MeshTransferVisualizer({
               isActive ? styles.statusDotActive : styles.statusDotIdle
             }`}
           />
-          {progress >= 1
-            ? "Transfer complete — Seeding"
+          {isSender
+            ? "Seeding to Mesh"
+            : progress >= 1
+            ? "Download Complete"
             : isActive
             ? "Transferring…"
             : connectedPeers.length === 0

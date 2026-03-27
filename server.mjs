@@ -13,6 +13,14 @@ const port = parseInt(process.env.PORT || "3000", 10);
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 
+// Prevent unhandled promise rejections from crashing the dev server
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[SERVER ERROR] Unhandled Rejection at:", promise, "reason:", reason);
+});
+process.on("uncaughtException", (error) => {
+  console.error("[SERVER ERROR] Uncaught Exception:", error);
+});
+
 app.prepare().then(() => {
   const httpServer = createServer(handler);
 
@@ -125,24 +133,24 @@ app.prepare().then(() => {
             console.log(`[!] Room ${roomId} is empty. Scheduling zero-persistence cleanup in 1 minute...`);
             
             setTimeout(async () => {
-              // Double check if peers re-joined during the timeout
-              const peersNow = await redis.scard(key);
-              if (peersNow !== 0) {
-                console.log(`[!] Room ${roomId} cleanup aborted: peers re-joined.`);
-                return;
-              }
-
-              // 1. Delete tracking key from Redis
-              await redis.del(key);
-              
-              // 2. Delete metadata from PostgreSQL to prevent future joins
               try {
+                // Double check if peers re-joined during the timeout
+                const peersNow = await redis.scard(key);
+                if (peersNow !== 0) {
+                  console.log(`[!] Room ${roomId} cleanup aborted: peers re-joined.`);
+                  return;
+                }
+
+                // 1. Delete tracking key from Redis
+                await redis.del(key);
+                
+                // 2. Delete metadata from PostgreSQL to prevent future joins
                 await prisma.fileMetadata.delete({
                   where: { roomId }
                 });
                 console.log(`[OK] Room ${roomId} metadata completely wiped from DB.`);
-              } catch (dbErr) {
-                console.warn(`[WARN] Could not delete room ${roomId} from DB:`, dbErr.message);
+              } catch (cleanupErr) {
+                console.warn(`[WARN] Room ${roomId} background cleanup failed:`, cleanupErr.message || cleanupErr);
               }
             }, 60000); // 1 minute grace period for reconnects/reloads
           }

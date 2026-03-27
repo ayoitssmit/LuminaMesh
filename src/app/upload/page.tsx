@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useChunker } from "@/lib/useChunker";
+import { saveChunkToCache } from "@/lib/indexedDB";
 import styles from "./upload.module.css";
 
 type RoomInfo = {
@@ -51,11 +52,20 @@ export default function UploadPage() {
       }),
     })
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         if (data.success) {
-          setRoomInfo({ roomId: data.roomId, peerId: data.peerId, token: data.token });
-          setRedirecting(true);
-          router.push(`/room/${data.roomId}`);
+          try {
+            await Promise.all(
+              chunks.map((chunk, index) => saveChunkToCache(manifest.masterHash, index, chunk))
+            );
+            setRoomInfo({ roomId: data.roomId, peerId: data.peerId, token: data.token });
+            setRedirecting(true);
+            router.push(`/room/${data.roomId}`);
+          } catch (err) {
+            console.error("Failed to save chunks:", err);
+            setError("Failed to cache file for seeding.");
+            setUploading(false);
+          }
         } else {
           setError(data.error || "Failed to create room");
           setUploading(false);

@@ -48,11 +48,14 @@ export default function RoomPage({ params }: PageProps) {
   const fileHandleRef = useRef<any>(null);
   const writableRef = useRef<any>(null);
 
-  // Fetch room metadata
+  // Fetch room metadata (guarded against React Strict Mode double-fire)
   useEffect(() => {
+    let cancelled = false;
+
     fetch("/api/room/" + roomId)
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return; // Discard stale response from Strict Mode's first mount
         if (data.success) {
           setRoomData({
             roomId: data.room.roomId,
@@ -67,9 +70,12 @@ export default function RoomPage({ params }: PageProps) {
         setLoading(false);
       })
       .catch((err) => {
+        if (cancelled) return;
         setError(err.message);
         setLoading(false);
       });
+
+    return () => { cancelled = true; };
   }, [roomId]);
 
   // Connect to mesh once we have room data
@@ -114,8 +120,33 @@ export default function RoomPage({ params }: PageProps) {
       },
     });
 
-    // We load the bitfield asynchronously before starting the mesh
-    getRecoveredBitfield(roomData.file.masterHash, chunkCount).then((initialBitfield) => {
+    peerManagerRef.current = peerManager;
+
+    const isSeeder = roomData.peerId.startsWith("seeder");
+
+    const initMesh = async () => {
+      // [MESH-ONLY ENFORCEMENT]: Bypass cache if receiver and not reloading
+      let initialBitfield = new Set<number>();
+      
+      if (isSeeder) {
+        // SENDER: Always load from IndexedDB — we cached the chunks during upload
+        initialBitfield = await getRecoveredBitfield(roomData.file.masterHash, chunkCount);
+        console.log(`[UI] Sender loaded ${initialBitfield.size}/${chunkCount} chunks from cache.`);
+      } else {
+        // RECEIVER: Check if this is a fresh join or a reload
+        let isFreshJoin = false;
+        if (typeof performance !== "undefined") {
+          const navEntry = window.performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
+          if (navEntry && navEntry.type !== "reload") {
+            isFreshJoin = true;
+            console.log("[UI] Fresh join detected. Bypassing local cache to force mesh transfer.");
+          }
+        }
+        if (!isFreshJoin) {
+          initialBitfield = await getRecoveredBitfield(roomData.file.masterHash, chunkCount);
+        }
+      }
+
       const scheduler = new ChunkScheduler(
         peerManager,
         {
@@ -135,6 +166,13 @@ export default function RoomPage({ params }: PageProps) {
                 // Small File: Retrieve all chunks from IndexedDB cache and assemble Blob
                 // WE DO NOT PURGE YET. We wait for the user to explicitly click "Save File"
                 const cachedChunks = await getAllCachedChunks(roomData.file.masterHash);
+                
+                // CRITICAL SPEED FIX: Load chunks into the scheduler's RAM so seeding is instantaneous!
+                // Without this, the seeder hits IndexedDB for every single 60KB chunk request.
+                if (schedulerRef.current) {
+                  schedulerRef.current.seedAll(cachedChunks);
+                }
+                
                 const blob = new Blob(cachedChunks, {
                   type: roomData.file.mimeType || "application/octet-stream",
                 });
@@ -144,32 +182,35 @@ export default function RoomPage({ params }: PageProps) {
               console.error("Failed to complete assembly:", err);
             }
 
-            setStatus("complete");
+            setStatus("complete"); 
             setSeeding(true); // Keep serving chunks to the swarm
             scheduler.startPushing(); // Actively push to remaining peers
 
-            // Record this download in transfer history locally
-            addHistoryEntry({
-              direction: "received",
-              fileName: roomData.file.name,
-              fileSize: parseInt(roomData.file.size, 10),
-              roomId: roomData.roomId,
-              peers: peerManager.getConnectedPeers(),
-              timestamp: Date.now(),
-            }).catch(console.error);
-
-            // Record this download in the server Postgres database so it appears on Dashboard
-            fetch("/api/history", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
+            // Only record history if we actually DOWNLOADED the file (i.e. not the original sender)
+            if (!isSeeder) {
+              // Record this download in transfer history locally
+              addHistoryEntry({
                 direction: "received",
                 fileName: roomData.file.name,
-                fileSize: roomData.file.size,
+                fileSize: parseInt(roomData.file.size, 10),
                 roomId: roomData.roomId,
                 peers: peerManager.getConnectedPeers(),
-              }),
-            }).catch(console.error);
+                timestamp: Date.now(),
+              }).catch(console.error);
+
+              // Record this download in the server Postgres database so it appears on Dashboard
+              fetch("/api/history", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  direction: "received",
+                  fileName: roomData.file.name,
+                  fileSize: roomData.file.size,
+                  roomId: roomData.roomId,
+                  peers: peerManager.getConnectedPeers(),
+                }),
+              }).catch(console.error);
+            }
           },
           onChunkVerified: () => {},
           onChunkFailed: (index, peerId) => {
@@ -181,22 +222,26 @@ export default function RoomPage({ params }: PageProps) {
         roomData.file.masterHash,
         initialBitfield,
         {
-          chunkSize: 64 * 1024,
+          chunkSize: 60 * 1024,
           fileHandle: fileHandleRef.current || undefined,
           writable: writableRef.current || undefined
         }
       );
 
-      // If we recovered a 100% complete bitfield, immediately trigger assembly and purge!
-      // We don't need to start the scheduler's gossip loop for downloading, just seeding.
+      schedulerRef.current = scheduler;
+
+      // SENDER FAST PATH: If we have 100% of chunks, load into RAM and start pushing IMMEDIATELY
       if (initialBitfield.size === chunkCount) {
-         console.log("[UI] Recovered 100% of chunks from DB! Assembling immediately...");
-         scheduler.events.onComplete(scheduler.chunks as ArrayBuffer[]);
+        console.log("[UI] Sender has 100% of chunks. Loading into RAM and starting push loop...");
+        const allChunks = await getAllCachedChunks(roomData.file.masterHash);
+        scheduler.seedAll(allChunks);
+        scheduler.startPushing();
+        setStatus("complete");
+        setSeeding(true);
+        setChunksReceived(chunkCount);
       }
 
       scheduler.start();
-      schedulerRef.current = scheduler;
-      
       const socketClient = new SocketClient(peerManager, {
         onConnected: () => {
           setStatus((prev) => {
@@ -220,7 +265,9 @@ export default function RoomPage({ params }: PageProps) {
 
       socketClient.connect(window.location.origin, roomData.token);
       socketClientRef.current = socketClient;
-    });
+    };
+
+    initMesh();
 
     return () => {
       meshStarted.current = false;

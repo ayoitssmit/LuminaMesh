@@ -3,7 +3,7 @@
 // Input: File object via postMessage
 // Output: ChunkManifest + chunk ArrayBuffers
 
-const CHUNK_SIZE = 64 * 1024; // 64KB per chunk
+const CHUNK_SIZE = 60 * 1024; // 60KB per chunk to leave room for metadata
 
 interface ChunkerInput {
   file: File;

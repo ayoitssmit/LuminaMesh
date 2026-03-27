@@ -1,26 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import jwt from "jsonwebtoken";
+import { auth } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized. Please log in first." }, { status: 401 });
+    }
+
     const body = await req.json();
     const { name, size, masterHash, chunkCount, mimeType } = body;
 
     // Validate required fields
     if (!name || size === undefined || !masterHash || chunkCount === undefined) {
       return NextResponse.json({ error: "Missing required manifest fields" }, { status: 400 });
-    }
-
-    // Since we don't have full user auth yet, create or get an "Anonymous" user
-    let user = await prisma.user.findFirst({ where: { email: "anon@luminamesh.local" } });
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: "anon@luminamesh.local",
-          name: "Anonymous Uploader",
-        },
-      });
     }
 
     // Create the FileMetadata and generate a Room ID
@@ -31,7 +26,7 @@ export async function POST(req: Request) {
         masterHash,
         chunkCount,
         mimeType,
-        uploaderId: user.id,
+        uploaderId: session.user.id,
       },
     });
 

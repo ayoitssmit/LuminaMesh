@@ -179,6 +179,45 @@
 
 .saveSubtle:hover {
   border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.roomUrlGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px 4px 4px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  pointer-events: auto;
+}
+
+.roomUrlText {
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copySubtle {
+  padding: 6px 12px;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  color: #00e5ff;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copySubtle:hover {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: #00e5ff;
 }
 
 /* ── Center Save Button ── */
