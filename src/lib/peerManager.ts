@@ -230,17 +230,22 @@ export class PeerManager {
       },
       (raw: Uint8Array) => {
         try {
-          const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
-          const metaLen = view.getUint32(0);
-          const metaBytes = raw.subarray(4, 4 + metaLen);
-          const text = new TextDecoder().decode(metaBytes);
-          const message: DataMessage = JSON.parse(text);
+          const text = new TextDecoder().decode(raw);
+          const message: any = JSON.parse(text);
 
-          if (raw.byteLength > 4 + metaLen) {
-            message.data = raw.subarray(4 + metaLen);
+          // If the message contains a base64 encoded chunk, decode it back to Uint8Array
+          if (message.dataBase64) {
+            const binaryString = atob(message.dataBase64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            message.data = bytes;
+            delete message.dataBase64; // Clean up
           }
 
-          this.handlers.onData(peerId, message);
+          this.handlers.onData(peerId, message as DataMessage);
         } catch (e) {
           console.error("[PeerManager] Frame decode error:", e);
         }
@@ -278,19 +283,23 @@ export class PeerManager {
     const peer = this.peers.get(peerId);
     if (peer && !peer.destroyed && this.openChannels.has(peerId)) {
       try {
-        const { data, ...meta } = message;
-        const metaBytes = new TextEncoder().encode(JSON.stringify(meta));
-        const payloadLength = 4 + metaBytes.length + (data ? data.length : 0);
-        const payload = new Uint8Array(payloadLength);
-        const view = new DataView(payload.buffer);
+        const payload: any = { ...message };
         
-        view.setUint32(0, metaBytes.length);
-        payload.set(metaBytes, 4);
-        if (data) {
-          payload.set(data, 4 + metaBytes.length);
+        // Convert binary Uint8Array into a Base64 string to guarantee 100% data integrity across all browser WebRTC implementations
+        if (payload.data) {
+          let binary = '';
+          const bytes = new Uint8Array(payload.data);
+          const len = bytes.byteLength;
+          for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          payload.dataBase64 = btoa(binary);
+          delete payload.data; // Remove raw binary from JSON
         }
         
-        peer.send(payload);
+        const jsonString = JSON.stringify(payload);
+        const encoded = new TextEncoder().encode(jsonString);
+        peer.send(encoded);
       } catch (err) {
         console.warn("[PeerManager] Send failed for " + peerId + ":", err);
       }

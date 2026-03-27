@@ -174,7 +174,10 @@ export default function RoomPage({ params }: PageProps) {
                   schedulerRef.current.seedAll(cachedChunks);
                 }
                 
-                const blob = new Blob(cachedChunks, {
+                // Wrap ArrayBuffers in Uint8Array before passing to Blob constructor.
+                // Direct ArrayBuffers cause string-coercion corruption in some WebKit/Blink versions.
+                const uint8Chunks = cachedChunks.map(buffer => new Uint8Array(buffer));
+                const blob = new Blob(uint8Chunks, {
                   type: roomData.file.mimeType || "application/octet-stream",
                 });
                 setAssembledBlob(blob);
