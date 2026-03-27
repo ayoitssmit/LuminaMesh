@@ -120,6 +120,7 @@ export default function RoomPage({ params }: PageProps) {
       },
     });
 
+    peerManager.setPeerId(roomData.peerId);
     peerManagerRef.current = peerManager;
 
     const isSeeder = roomData.peerId.startsWith("seeder");

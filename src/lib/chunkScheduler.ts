@@ -483,15 +483,26 @@ export class ChunkScheduler {
       }, 200);
     }
 
-    // INSTANT HAVE: Forward a tiny "chunk-available" announcement to ALL 
-    // connected peers who don't have it yet. This replaces the old Instant Relay 
-    // (which flooded the network with 64KB chunks and killed bandwidth).
-    // Now, peers instantly know we have a chunk, and they can PULL it if they need it.
+    // 4. INSTANT RELAY (Star-Topology Push)
+    // If we pulled this chunk DIRECTLY from the Seeder, we are the "Owner" of this shard.
+    // We instantly push it to all other Receivers, bypassing their request loops entirely!
     for (const pid of this.peerManager.getConnectedPeers()) {
-      if (pid === peerId) continue; // don't announce back to the sender
+      if (pid === peerId) continue; // don't send it back to the peer who gave it
+      
       const peerBf = this.peerBitfields.get(pid);
       if (!peerBf || !peerBf.has(chunkIndex)) {
-        this.peerManager.sendChunkAvailable(pid, chunkIndex);
+        
+        if (peerId.startsWith("seeder") && !pid.startsWith("seeder")) {
+          // Instant Push!
+          let sentMap = this.recentlySentChunks.get(pid);
+          if (!sentMap) { sentMap = new Map(); this.recentlySentChunks.set(pid, sentMap); }
+          sentMap.set(chunkIndex, Date.now()); // Prevent them from pulling it manually
+          
+          this.peerManager.sendChunk(pid, chunkIndex, new Uint8Array(data));
+        } else {
+          // Standard Fallback: Just let them know we have it so they can pull it later
+          this.peerManager.sendChunkAvailable(pid, chunkIndex);
+        }
       }
     }
 
@@ -570,11 +581,11 @@ export class ChunkScheduler {
   private requestNextChunks(): void {
     const now = Date.now();
 
-    // 1. CLEANUP STALE REQUESTS (Timeout: 3 seconds)
+    // 1. CLEANUP STALE REQUESTS (Timeout: 1 second)
     // We must run this even if no peers are connected to ensure the state stays clean.
     for (const [pid, timestamps] of this.requestTimestamps.entries()) {
       for (let i = timestamps.length - 1; i >= 0; i--) {
-        if (now - timestamps[i].timestamp > 3000) {
+        if (now - timestamps[i].timestamp > 1000) {
           const { chunkIndex } = timestamps[i];
           this.pendingRequests.delete(chunkIndex); // release to swarm
           
@@ -599,23 +610,48 @@ export class ChunkScheduler {
       return Math.random() - 0.5; // randomize the rest
     });
 
-    // For each peer, find chunks they advertise that we don't have and haven't requested.
-    // Limit in-flight requests to 200 per peer to prevent overwhelming the WebRTC buffer
-    for (const pid of connectedPeers) {
-      const peerBf = this.peerBitfields.get(pid);
-      if (!peerBf || peerBf.size === 0) continue;
+    // 2. DETERMINISTIC RECEIVER-SIDE SHARDING
+    // Divide the file into N equal shards (N = total receivers).
+    // Each receiver targets its unique shard first to maximize swarm diversity and cross-seeding.
+    let globalActive = this.pendingRequests.size;
+    const MAX_GLOBAL_ACTIVE = 600; // ~38MB global in-flight limit
 
-      let perf = this.peerPerformance.get(pid);
-      if (!perf) {
-        perf = { avgLatency: 100, throughput: 0, activeRequests: 0, maxRequests: 300, score: 50 };
-        this.peerPerformance.set(pid, perf);
-      }
+    const allReceivers = connectedPeers.filter(p => !p.startsWith("seeder"));
+    const myId = this.peerManager.getPeerId();
+    if (!myId.startsWith("seeder") && !allReceivers.includes(myId)) {
+      allReceivers.push(myId);
+    }
+    allReceivers.sort();
+    
+    let myIndex = allReceivers.indexOf(myId);
+    if (myIndex === -1) myIndex = 0;
+    
+    const numReceivers = Math.max(1, allReceivers.length);
+    const shardSize = Math.ceil(this.totalChunks / numReceivers);
+    const myShardStart = myIndex * shardSize;
 
-      for (const chunkIdx of peerBf) {
-        if (chunkIdx < this.firstMissingIndex) continue; // Sparse scan opt
-        if (perf.activeRequests >= 300) break; // Throttle using O(1) counter
-        if (this.haveSet.has(chunkIdx)) continue;
-        if (this.pendingRequests.has(chunkIdx)) continue;
+    // Iterate through the entire file, but exactly starting at our designated Shard offset.
+    for (let offset = 0; offset < this.totalChunks; offset++) {
+      if (globalActive >= MAX_GLOBAL_ACTIVE) break;
+      
+      const chunkIdx = (myShardStart + offset) % this.totalChunks;
+      if (this.haveSet.has(chunkIdx)) continue;
+      if (this.pendingRequests.has(chunkIdx)) continue;
+
+      // Find an available peer for this specific chunk
+      // We shift the starting peer based on chunkIdx to ensure perfect distribution
+      for (let i = 0; i < connectedPeers.length; i++) {
+        const pid = connectedPeers[(chunkIdx + i) % connectedPeers.length];
+        const peerBf = this.peerBitfields.get(pid);
+        if (!peerBf || !peerBf.has(chunkIdx)) continue;
+
+        let perf = this.peerPerformance.get(pid);
+        if (!perf) {
+          perf = { avgLatency: 100, throughput: 0, activeRequests: 0, maxRequests: 300, score: 50 };
+          this.peerPerformance.set(pid, perf);
+        }
+
+        if (perf.activeRequests >= 300) continue; // Per-peer throttle
 
         this.peerManager.requestChunk(pid, chunkIdx);
         this.pendingRequests.set(chunkIdx, now);
@@ -625,6 +661,8 @@ export class ChunkScheduler {
         timestamps.push({ chunkIndex: chunkIdx, timestamp: now });
         
         perf.activeRequests++;
+        globalActive++;
+        break; // Chunk assigned, proceed to next missing chunk
       }
     }
   }

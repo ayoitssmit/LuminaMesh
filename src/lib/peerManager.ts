@@ -29,7 +29,25 @@ class NativePeer {
     private onError: (err: Error) => void
   ) {
     this.pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        }
+      ],
     });
 
     this.pc.onicecandidate = (event) => {
@@ -186,9 +204,18 @@ export class PeerManager {
   private peers: Map<string, NativePeer> = new Map();
   private openChannels: Set<string> = new Set();
   private handlers: PeerEventHandler;
+  private localPeerId: string = "";
 
   constructor(handlers: PeerEventHandler) {
     this.handlers = handlers;
+  }
+
+  setPeerId(id: string) {
+    this.localPeerId = id;
+  }
+
+  getPeerId(): string {
+    return this.localPeerId;
   }
 
   createPeer(peerId: string, initiator: boolean): NativePeer {
