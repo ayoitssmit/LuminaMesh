@@ -264,7 +264,8 @@ export default function RoomPage({ params }: PageProps) {
         onPeerLeft: () => {},
       }, roomData.peerId);
 
-      socketClient.connect(window.location.origin, roomData.token);
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin;
+      socketClient.connect(socketUrl, roomData.token);
       socketClientRef.current = socketClient;
     };
 

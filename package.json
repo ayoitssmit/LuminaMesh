@@ -6,6 +6,7 @@
     "dev": "node server.mjs",
     "build": "next build",
     "start": "node server.mjs",
+    "start:signaling": "node standalone-signaling.mjs",
     "lint": "eslint"
   },
   "dependencies": {
