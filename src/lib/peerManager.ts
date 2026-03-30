@@ -27,9 +27,10 @@ class NativePeer {
     private onConnect: () => void,
     private onData: (data: Uint8Array) => void,
     private onClose: () => void,
-    private onError: (err: Error) => void
+    private onError: (err: Error) => void,
+    private dynamicIceServers?: RTCIceServer[]
   ) {
-    const iceServers: RTCIceServer[] = [
+    const iceServers: RTCIceServer[] = this.dynamicIceServers || [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun.cloudflare.com:3478" },
@@ -55,7 +56,7 @@ class NativePeer {
       }
     ];
 
-    if (process.env.NEXT_PUBLIC_TURN_URL) {
+    if (process.env.NEXT_PUBLIC_TURN_URL && (!this.dynamicIceServers || this.dynamicIceServers.length === 0)) {
       // Prioritize the user's custom TURN server by placing it first
       iceServers.unshift({
         urls: process.env.NEXT_PUBLIC_TURN_URL,
@@ -250,9 +251,11 @@ export class PeerManager {
   private openChannels: Set<string> = new Set();
   private handlers: PeerEventHandler;
   private localPeerId: string = "";
+  private dynamicIceServers?: RTCIceServer[];
 
-  constructor(handlers: PeerEventHandler) {
+  constructor(handlers: PeerEventHandler, dynamicIceServers?: RTCIceServer[]) {
     this.handlers = handlers;
+    this.dynamicIceServers = dynamicIceServers;
   }
 
   setPeerId(id: string) {
@@ -303,7 +306,8 @@ export class PeerManager {
       (err) => {
         console.error("[PeerManager] Error with peer " + peerId + ":", err.message);
         this.destroyPeer(peerId);
-      }
+      },
+      this.dynamicIceServers
     );
 
     this.peers.set(peerId, peer);
