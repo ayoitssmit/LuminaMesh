@@ -19,6 +19,7 @@ class NativePeer {
   public destroyed = false;
   // Queue to sequence asynchronous signaling operations and prevent WebRTC Glare crashes
   private signalingQueue: Promise<void> = Promise.resolve();
+  private pendingCandidates: any[] = [];
 
   constructor(
     private initiator: boolean,
@@ -28,37 +29,57 @@ class NativePeer {
     private onClose: () => void,
     private onError: (err: Error) => void
   ) {
+    const iceServers: RTCIceServer[] = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun.cloudflare.com:3478" },
+      {
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443",
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443?transport=tcp",
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      },
+      {
+        urls: "turns:openrelay.metered.ca:443?transport=tcp",
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      }
+    ];
+
+    if (process.env.NEXT_PUBLIC_TURN_URL) {
+      // Prioritize the user's custom TURN server by placing it first
+      iceServers.unshift({
+        urls: process.env.NEXT_PUBLIC_TURN_URL,
+        username: process.env.NEXT_PUBLIC_TURN_USERNAME,
+        credential: process.env.NEXT_PUBLIC_TURN_PASSWORD,
+      });
+    }
+
     this.pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun.cloudflare.com:3478" },
-        {
-          urls: "turn:openrelay.metered.ca:80",
-          username: "openrelayproject",
-          credential: "openrelayproject"
-        },
-        {
-          urls: "turn:openrelay.metered.ca:443",
-          username: "openrelayproject",
-          credential: "openrelayproject"
-        },
-        {
-          urls: "turn:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject"
-        },
-        {
-          urls: "turns:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject"
-        }
-      ],
+      iceCandidatePoolSize: 2, // Speeds up gathering on restrictive networks
+      iceServers
     });
 
     this.pc.onicecandidate = (event) => {
       if (event.candidate) {
         this.onSignal({ type: "candidate", candidate: event.candidate });
+      }
+    };
+
+    // Track detailed ICE connection state for debugging restrictive firewalls
+    this.pc.oniceconnectionstatechange = () => {
+      console.log(`[NativePeer] ICE state changed to: ${this.pc.iceConnectionState}`);
+      if (this.pc.iceConnectionState === "failed") {
+        console.error("[NativePeer] ICE connection failed. The network firewall is dropping the WebRTC relay stream.");
       }
     };
 
@@ -164,13 +185,31 @@ class NativePeer {
             await this.pc.setLocalDescription(answer);
             this.onSignal({ type: "answer", sdp: answer.sdp });
           }
+
+          // Process any out-of-order candidates that arrived before the RemoteDescription
+          if (this.pendingCandidates.length > 0) {
+            console.log(`[NativePeer] Processing ${this.pendingCandidates.length} deferred ICE candidates.`);
+            for (const candidate of this.pendingCandidates) {
+              try {
+                await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+              } catch (e) {
+                console.warn("[NativePeer] Deferred candidate failed:", e);
+              }
+            }
+            this.pendingCandidates = [];
+          }
+
         } else if (data.type === "candidate") {
           try {
-            await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            if (!this.pc.remoteDescription) {
+               // Fast-path defer instead of throwing a DOMException natively
+               console.warn("[NativePeer] Deferring candidate, no remote description.");
+               this.pendingCandidates.push(data.candidate);
+            } else {
+               await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
           } catch (candidateErr) {
-            // ICE candidates are "best effort". If one fails (e.g. wrong-state), 
-            // we ignore it rather than killing the entire peer connection.
-            console.warn("[NativePeer] Deferred/Ignored out-of-order ICE candidate.");
+            console.warn("[NativePeer] ICE Candidate failed to apply.", candidateErr);
           }
         }
       } catch (err: any) {
