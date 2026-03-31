@@ -123,7 +123,7 @@ function LandingContent() {
             style={{ cursor: view !== "hero" ? "pointer" : "default", display: 'flex', alignItems: 'center', gap: '0.6rem' }}
             onClick={() => switchTo("hero")}
           >
-            <Image src="/Logo.png" alt="LuminaMesh Logo" width={36} height={36} />
+            <Image src="/FinalLogo.png" alt="LuminaMesh Logo" width={36} height={36} />
             LuminaMesh
           </div>
           <button

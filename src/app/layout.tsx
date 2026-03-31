@@ -20,12 +20,20 @@ const chakraPetch = Chakra_Petch({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://luminamesh.vercel.app"),
   title: "LuminaMesh — Peer-to-Peer File Sharing",
   description: "Share files directly between browsers through an encrypted WebRTC mesh network. No server uploads, no size limits, zero persistence.",
   icons: {
-    icon: "/Logo.png",
-    shortcut: "/Logo.png",
-    apple: "/Logo.png",
+    icon: "/FinalLogo.png",
+    shortcut: "/FinalLogo.png",
+    apple: "/FinalLogo.png",
+    other: [
+      {
+        rel: 'icon',
+        type: 'image/png',
+        url: '/FinalLogo.png',
+      },
+    ],
   },
 };
 
@@ -36,6 +44,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/FinalLogo.png" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${chakraPetch.variable}`}>
         <Providers>{children}</Providers>
       </body>
