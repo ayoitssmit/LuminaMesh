@@ -23,10 +23,7 @@
 .navBrand {
   font-size: 1rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ededed, hsla(208, 33%, 21%, 1));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #ffffff;
 }
 
 .navRight {
@@ -122,8 +119,8 @@
 }
 
 .dropZone:hover, .dropZoneActive {
-  border-color: hsla(208, 33%, 21%, 1);
-  background: rgba(124, 92, 252, 0.04);
+  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .dropIcon {
@@ -175,7 +172,7 @@
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
+  background: #ffffff;
   border-radius: 4px;
   transition: width 0.2s;
 }
@@ -319,11 +316,11 @@
 }
 
 .receiveBtn {
-  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
+  background: #ffffff;
   border: none;
   border-radius: 8px;
   padding: 0 1.25rem;
-  color: #fff;
+  color: #000000;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s, filter 0.2s;
@@ -405,12 +402,12 @@
 }
 
 .historyList::-webkit-scrollbar-thumb {
-  background: hsla(208, 33%, 46%, 0.3);
+  background: rgba(255, 255, 255, 0.4);
   border-radius: 4px;
 }
 
 .historyList::-webkit-scrollbar-thumb:hover {
-  background: hsla(208, 33%, 46%, 0.6);
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .historyRow {

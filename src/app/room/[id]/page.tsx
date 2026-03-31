@@ -32,7 +32,6 @@ export default function RoomPage({ params }: PageProps) {
   const router = useRouter();
   const { id: roomId } = use(params);
   const [roomData, setRoomData] = useState<RoomData | null>(null);
-  const [turnServers, setTurnServers] = useState<any[] | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "connecting" | "downloading" | "complete" | "waiting_for_permission">("loading");
@@ -49,23 +48,14 @@ export default function RoomPage({ params }: PageProps) {
   const fileHandleRef = useRef<any>(null);
   const writableRef = useRef<any>(null);
 
-  // Fetch room metadata and dynamic TURN credentials concurrently
+  // Fetch room metadata
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([
-      fetch("/api/room/" + roomId).then((res) => res.json()),
-      fetch("/api/turn").then((res) => res.json()).catch((err) => {
-        console.warn("[UI] Failed to explicitly fetch enterprise TURN servers. WebRTC will fallback to defaults.", err);
-        return null;
-      })
-    ])
-      .then(([data, turnRes]) => {
+    fetch("/api/room/" + roomId)
+      .then((res) => res.json())
+      .then((data) => {
         if (cancelled) return;
-
-        if (turnRes && turnRes.ice_servers) {
-           setTurnServers(turnRes.ice_servers);
-        }
 
         if (data.success) {
           setRoomData({
@@ -129,7 +119,7 @@ export default function RoomPage({ params }: PageProps) {
           schedulerRef.current.handleMessage(peerId, message);
         }
       },
-    }, turnServers);
+    });
 
     peerManager.setPeerId(roomData.peerId);
     peerManagerRef.current = peerManager;

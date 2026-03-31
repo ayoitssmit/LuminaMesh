@@ -54,10 +54,10 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsla(208, 33%, 46%, 0.3);
+  background: rgba(255, 255, 255, 0.4);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsla(208, 33%, 46%, 0.6);
+  background: rgba(255, 255, 255, 0.8);
 }

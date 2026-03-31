@@ -12,14 +12,12 @@
 .back {
   background: none;
   border: none;
-  color: #555;
+  color: #ffffff;
   font-size: 0.82rem;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: opacity 0.2s;
   padding: 0;
 }
-
-.back:hover { color: hsla(208, 33%, 21%, 1); }
 
 .card {
   max-width: 560px;
@@ -158,10 +156,10 @@
 
 .saveBtn {
   padding: 0.8rem 1.5rem;
-  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
+  background: #ffffff;
   border: none;
   border-radius: 10px;
-  color: #fff;
+  color: #000000;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -237,10 +235,10 @@
 .saveBtnFull {
   flex: 2;
   padding: 0.8rem 1.5rem;
-  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
+  background: #ffffff;
   border: none;
   border-radius: 10px;
-  color: #fff;
+  color: #000000;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;

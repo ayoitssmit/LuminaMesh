@@ -6,9 +6,19 @@
   font-family: var(--font-chakra), sans-serif;
 }
 
-/* ── Container ── */
+/* ── Container — now scrollable ── */
 .container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  background: transparent;
+}
+
+/* ── Hero Section — first viewport ── */
+.heroSection {
   min-height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -91,6 +101,49 @@
   letter-spacing: 0.04em;
   color: #ffffff;
   font-family: var(--font-chakra), sans-serif;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navLink {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  font-family: var(--font-chakra), sans-serif;
+  cursor: pointer;
+  position: relative;
+  padding: 0.25rem 0;
+  transition: color 0.3s ease;
+}
+
+.navLink:hover {
+  color: #ffffff;
+}
+
+.navLink::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #ffffff;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 2px;
+}
+
+.navLink:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 .navAuthBtn {
@@ -663,6 +716,425 @@
 }
 
 /* ══════════════════════════════════════════
+   SECTION — Shared
+   ══════════════════════════════════════════ */
+.section {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 6rem 2rem;
+  position: relative;
+}
+
+.sectionLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 0.75rem;
+}
+
+.sectionTitle {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.6rem;
+  line-height: 1.2;
+}
+
+.sectionSub {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.45);
+  max-width: 540px;
+  line-height: 1.65;
+  margin-bottom: 3rem;
+}
+
+/* Scroll-triggered fade-in */
+.fadeUp {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fadeUpVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Thin separator between sections */
+.sectionDivider {
+  width: 100%;
+  max-width: 1100px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  margin: 0 auto;
+}
+
+/* ══════════════════════════════════════════
+   SECTION — How It Works
+   ══════════════════════════════════════════ */
+.stepsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.stepCard {
+  background: rgba(10, 10, 12, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.stepCard:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-4px);
+}
+
+/* Top shine line */
+.stepCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  pointer-events: none;
+}
+
+.stepNumber {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.25);
+  margin-bottom: 1.25rem;
+}
+
+.stepIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1.25rem;
+  color: #ffffff;
+}
+
+.stepTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+.stepDesc {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.6;
+}
+
+/* Staggered delays for step cards */
+.stepDelay1 { transition-delay: 0.1s; }
+.stepDelay2 { transition-delay: 0.25s; }
+.stepDelay3 { transition-delay: 0.4s; }
+
+/* ══════════════════════════════════════════
+   SECTION — Live Mesh Demo
+   ══════════════════════════════════════════ */
+.meshDemoLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+.meshDemoText {
+  display: flex;
+  flex-direction: column;
+}
+
+.meshDemoCanvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.meshDemoSvg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Node pulse animation */
+@keyframes nodePulse {
+  0%, 100% { r: 6; opacity: 0.9; }
+  50% { r: 8; opacity: 0.5; }
+}
+
+/* Data flow animation */
+@keyframes dataFlow {
+  from { stroke-dashoffset: 30; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* ══════════════════════════════════════════
+   SECTION — Bento Feature Grid
+   ══════════════════════════════════════════ */
+.bentoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 1.25rem;
+}
+
+.bentoCard {
+  background: rgba(10, 10, 12, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.bentoCard:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-3px);
+}
+
+.bentoCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  pointer-events: none;
+}
+
+/* Large card — spans 2 rows */
+.bentoLarge {
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Wide card — spans 2 columns */
+.bentoWide {
+  grid-column: 1 / 3;
+}
+
+.bentoIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.bentoTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.02em;
+}
+
+.bentoDesc {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════
+   SECTION — Speed Comparison
+   ══════════════════════════════════════════ */
+.speedBars {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 700px;
+}
+
+.speedRow {
+  display: grid;
+  grid-template-columns: 130px 1fr 60px;
+  align-items: center;
+  gap: 1rem;
+}
+
+.speedLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.speedLabelHighlight {
+  color: #ffffff;
+}
+
+.speedTrack {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.speedFill {
+  height: 100%;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  width: 0%;
+  transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.speedFillHighlight {
+  background: #ffffff;
+}
+
+.speedFillVisible {
+  opacity: 1;
+}
+
+.speedValue {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.speedValueHighlight {
+  color: #ffffff;
+}
+
+/* ══════════════════════════════════════════
+   SECTION — Footer
+   ══════════════════════════════════════════ */
+.footer {
+  width: 100%;
+  padding: 5rem 2rem 2rem;
+  text-align: center;
+  position: relative;
+}
+
+.footerInner {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.footerTitle {
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.75rem;
+  line-height: 1.15;
+}
+
+.footerSub {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 2.25rem;
+  line-height: 1.6;
+}
+
+.footerCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 2rem;
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: var(--font-chakra), sans-serif;
+  margin-bottom: 3.5rem;
+}
+
+.footerCta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+}
+
+.footerDivider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin-bottom: 2rem;
+}
+
+.footerContact {
+  margin-bottom: 1.5rem;
+}
+
+.footerContactTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 0.75rem;
+}
+
+.footerGithubRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+.footerGithubLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  transition: all 0.25s ease;
+}
+
+.footerGithubLink:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.footerBottom {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.18);
+  letter-spacing: 0.03em;
+}
+
+/* ══════════════════════════════════════════
    Responsive
    ══════════════════════════════════════════ */
 @media (max-width: 480px) {
@@ -679,6 +1151,10 @@
     padding: 0.4rem 0.9rem;
     font-size: 0.76rem;
     border-radius: 8px;
+  }
+
+  .navLinks {
+    display: none;
   }
 
   .heroCard {
@@ -707,12 +1183,29 @@
     padding: 2rem 1.25rem;
     border-radius: 16px;
   }
+
+  /* New sections mobile */
+  .section { padding: 4rem 1.25rem; }
+  .stepsRow { grid-template-columns: 1fr; }
+  .meshDemoLayout { grid-template-columns: 1fr; gap: 2rem; }
+  .meshDemoCanvas { max-width: 280px; }
+  .bentoGrid { grid-template-columns: 1fr; }
+  .bentoLarge { grid-row: auto; }
+  .bentoWide { grid-column: auto; }
+  .speedRow { grid-template-columns: 90px 1fr 50px; gap: 0.5rem; }
+  .speedLabel { font-size: 0.72rem; }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
   .navInner { padding: 0.6rem 1.25rem; }
+  .navLinks { display: none; }
   .heroCard { padding: 2.5rem 1.75rem; }
   .heroTitle { font-size: 2.5rem; }
+  .stepsRow { grid-template-columns: 1fr; }
+  .meshDemoLayout { grid-template-columns: 1fr; gap: 2rem; }
+  .bentoGrid { grid-template-columns: 1fr; }
+  .bentoLarge { grid-row: auto; }
+  .bentoWide { grid-column: auto; }
 }
 
 @media (max-height: 600px) {

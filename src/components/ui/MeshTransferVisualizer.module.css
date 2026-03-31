@@ -204,20 +204,20 @@
 }
 
 .copySubtle {
-  padding: 6px 12px;
-  background: rgba(0, 229, 255, 0.1);
-  border: 1px solid rgba(0, 229, 255, 0.2);
-  color: #00e5ff;
+  padding: 0.5rem 1rem;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .copySubtle:hover {
-  background: rgba(0, 229, 255, 0.2);
-  border-color: #00e5ff;
+  background: #111111;
+  border-color: #ffffff;
 }
 
 /* ── Center Save Button ── */
