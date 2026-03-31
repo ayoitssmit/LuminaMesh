@@ -162,7 +162,7 @@ const ShaderBackground = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext("webgl");
+    const gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
     if (!gl) {
       console.warn("WebGL not supported.");
       return;
@@ -245,6 +245,7 @@ const ShaderBackground = () => {
     <canvas
       ref={canvasRef}
       className="fixed top-0 left-0 w-full h-full -z-10"
+      style={{ opacity: 0.999 }}
     />
   );
 };

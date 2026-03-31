@@ -1,44 +1,405 @@
+/* ══════════════════════════════════════════
+   Font — Chakra Petch applied everywhere
+   ══════════════════════════════════════════ */
+.container,
+.container * {
+  font-family: var(--font-chakra), sans-serif;
+}
+
+/* ── Container ── */
 .container {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
   position: relative;
   overflow: hidden;
 }
 
-.bg {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124, 92, 252, 0.18), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0, 212, 255, 0.08), transparent);
+/* ══════════════════════════════════════════
+   Glassmorphism Navbar
+   ══════════════════════════════════════════ */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0.85rem 1.25rem;
 }
 
-.bg::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(124, 92, 252, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 92, 252, 0.04) 1px, transparent 1px);
-  background-size: 48px 48px;
+.navInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.75rem;
+  isolation: isolate;
+
+  /* Solid dark card with glass feel */
+  background: rgba(10, 10, 12, 0.92);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+  position: relative;
+  overflow: hidden;
 }
 
-.card {
+/* Top shine line */
+.navInner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Left edge shine */
+.navInner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.4),
+    transparent,
+    rgba(255, 255, 255, 0.12)
+  );
+  pointer-events: none;
+}
+
+/* LuminaMesh text-only logo in navbar */
+.navLogoText {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  font-family: var(--font-chakra), sans-serif;
+}
+
+.navAuthBtn {
+  padding: 0.5rem 1.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #e8edf5;
+  font-size: 0.84rem;
+  font-weight: 600;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.navAuthBtn:hover {
+  background: rgba(255, 255, 255, 0.17);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.06);
+}
+
+/* ══════════════════════════════════════════
+   Glassmorphism Hero Card
+   Dark card with heavy blur for proper refraction
+   ══════════════════════════════════════════ */
+.heroCard {
   position: relative;
   z-index: 1;
+  text-align: center;
+  max-width: 640px;
   width: 100%;
-  max-width: 420px;
-  background: rgba(12, 12, 14, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 3rem 2.5rem;
+
+  /* Solid dark card with glass feel */
+  background: rgba(10, 10, 12, 0.92);
   border-radius: 20px;
-  padding: 2.5rem 2rem;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 2px 1px rgba(255, 255, 255, 0.03);
+
+  /* Slide-up entrance */
+  animation: heroSlideUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  overflow: hidden;
 }
 
+/* Top shine line on hero card */
+.heroCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Left edge shine on hero card */
+.heroCard::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5),
+    transparent,
+    rgba(255, 255, 255, 0.15)
+  );
+  pointer-events: none;
+}
+
+/* ── Slot wrapper that fades/slides during view switch ── */
+.cardSlot {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 3rem);
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 5rem; /* Lowering the position from the navbar */
+  margin-bottom: 2rem;
+}
+
+.cardSlotIn {
+  animation: slotIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cardSlotOut {
+  animation: slotOut 0.22s ease-in both;
+  pointer-events: none;
+}
+
+@keyframes slotIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+@keyframes slotOut {
+  from { opacity: 1; transform: translateY(0)   scale(1);    }
+  to   { opacity: 0; transform: translateY(-16px) scale(0.97); }
+}
+
+@keyframes heroSlideUp {
+  from { opacity: 0; transform: translateY(50px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Hero Title: "LuminaMesh" — slides up slightly later ── */
+.heroTitle {
+  font-size: clamp(2.2rem, 6vw, 3.8rem);
+  font-weight: 700;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  margin-bottom: 1rem;
+  color: #ffffff;
+  animation: titleSlideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+@keyframes titleSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Tagline (bold 1-liner) ── */
+.heroTagline {
+  font-size: clamp(0.9rem, 2.2vw, 1.1rem);
+  font-weight: 600;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 0.65rem;
+  animation: titleSlideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+
+/* ── Sub-description (softer) ── */
+.heroSub {
+  font-size: clamp(0.8rem, 1.8vw, 0.95rem);
+  font-weight: 400;
+  font-family: var(--font-chakra), sans-serif;
+  color: rgba(255, 255, 255, 0.38);
+  line-height: 1.75;
+  margin-bottom: 2.25rem;
+  animation: titleSlideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+
+/* Hide <br> on small screens */
+.heroBr {
+  display: none;
+}
+
+@media (min-width: 520px) {
+  .heroBr {
+    display: inline;
+  }
+}
+
+/* ── CTA Buttons ── */
+.heroCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  animation: titleSlideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
+}
+
+.heroBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.9rem;
+  border: none;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #000000;
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.28s ease;
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+}
+
+.heroBtn:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
+}
+
+.heroBtn svg {
+  transition: transform 0.25s ease;
+}
+
+.heroBtn:hover svg {
+  transform: translateX(4px);
+}
+
+.heroSecondaryBtn {
+  padding: 0.8rem 1.6rem;
+  border: none;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #000000;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.heroSecondaryBtn:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
+}
+
+/* ══════════════════════════════════════════
+   Auth Card — same slot as hero, replaces it
+   ══════════════════════════════════════════ */
+.authCard {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  background: rgba(10, 10, 12, 0.95);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+  padding: 1.75rem 2rem;
+}
+
+.authCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  pointer-events: none;
+}
+
+.authCard::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 1px; height: 100%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.3), transparent, rgba(255,255,255,0.1));
+  pointer-events: none;
+}
+
+/* Hide scrollbar on authCard */
+.authCard::-webkit-scrollbar { width: 4px; }
+.authCard::-webkit-scrollbar-track { background: transparent; }
+.authCard::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+/* Close button */
+.closeBtn {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  width: 32px; height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.closeBtn:hover {
+  background: rgba(255,255,255,0.14);
+  color: #ededed;
+}
+
+/* ── Card inner ── */
 .logo {
   display: flex;
   align-items: center;
@@ -47,40 +408,40 @@
 }
 
 .logoMark {
-  width: 34px;
-  height: 34px;
+  width: 34px; height: 34px;
   border-radius: 9px;
-  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 900;
   font-size: 1rem;
-  color: #fff;
+  color: #000000;
   flex-shrink: 0;
 }
 
 .logoText {
-  font-size: 1.25rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #ededed, hsla(208, 33%, 21%, 1));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.05em;
+  color: #ffffff;
 }
 
 .tagline {
-  font-size: 0.82rem;
-  color: #555;
-  margin-bottom: 1.75rem;
+  font-size: 0.8rem;
+  font-family: var(--font-chakra), sans-serif;
+  color: rgba(255,255,255,0.38);
+  margin-bottom: 1rem;
+  letter-spacing: 0.02em;
 }
 
 /* OAuth */
 .oauthRow {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  margin-bottom: 1.25rem;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
 }
 
 .oauthBtn {
@@ -89,10 +450,12 @@
   justify-content: center;
   gap: 0.6rem;
   width: 100%;
-  padding: 0.72rem 1rem;
+  padding: 0.6rem 1rem;
   border-radius: 10px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.15s;
   border: 1px solid transparent;
@@ -109,8 +472,7 @@
 }
 
 .oauthIcon {
-  width: 18px;
-  height: 18px;
+  width: 18px; height: 18px;
   flex-shrink: 0;
 }
 
@@ -131,29 +493,31 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.8rem;
 }
 
 .dividerLine {
   flex: 1;
   height: 1px;
-  background: #1e1e1e;
+  background: rgba(255,255,255,0.1);
 }
 
 .dividerText {
-  font-size: 0.72rem;
-  color: #444;
+  font-size: 0.7rem;
+  font-family: var(--font-chakra), sans-serif;
+  color: rgba(255,255,255,0.28);
   white-space: nowrap;
+  letter-spacing: 0.03em;
 }
 
 /* Tabs */
 .tabs {
   display: flex;
   gap: 0;
-  background: #0d0d0f;
+  background: rgba(255,255,255,0.05);
   border-radius: 10px;
   padding: 3px;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 
 .tab {
@@ -162,15 +526,17 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #555;
-  font-size: 0.85rem;
+  color: rgba(255,255,255,0.38);
+  font-size: 0.84rem;
   font-weight: 600;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.03em;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
 
 .tabActive {
-  background: #1a1a1f;
+  background: rgba(255,255,255,0.11);
   color: #ededed;
 }
 
@@ -178,41 +544,33 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-}
-
-.formHint {
-  font-size: 0.72rem;
-  color: #444;
-  line-height: 1.5;
-  padding: 0.6rem 0.75rem;
-  background: hsla(208, 33%, 46%, 0.05);
-  border: 1px solid hsla(208, 33%, 46%, 0.1);
-  border-radius: 8px;
+  gap: 0.5rem;
 }
 
 .input {
   width: 100%;
-  padding: 0.72rem 0.9rem;
-  background: #0d0d0f;
-  border: 1px solid #1e1e1e;
+  padding: 0.6rem 0.8rem;
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(255,255,255,0.1);
   border-radius: 10px;
   color: #ededed;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  font-family: var(--font-chakra), sans-serif;
   outline: none;
   transition: border-color 0.2s;
   box-sizing: border-box;
 }
 
 .input:focus {
-  border-color: hsla(208, 33%, 21%, 1);
+  border-color: rgba(255, 255, 255, 0.65);
 }
 
 .input::placeholder {
-  color: #333;
+  color: rgba(255,255,255,0.22);
+  font-family: var(--font-chakra), sans-serif;
 }
 
-/* Password wrapper with eye toggle */
+/* Password wrapper */
 .pwWrapper {
   position: relative;
   display: flex;
@@ -230,7 +588,7 @@
   border: none;
   padding: 0.3rem;
   cursor: pointer;
-  color: #444;
+  color: rgba(255,255,255,0.32);
   display: flex;
   align-items: center;
   transition: color 0.15s;
@@ -238,44 +596,46 @@
   flex-shrink: 0;
 }
 
-.eyeBtn:hover {
-  color: hsla(208, 33%, 21%, 1);
-}
+.eyeBtn:hover { color: rgba(255,255,255,0.65); }
 
 .rememberRow {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.8rem;
-  color: #555;
+  font-size: 0.78rem;
+  font-family: var(--font-chakra), sans-serif;
+  color: rgba(255,255,255,0.4);
   cursor: pointer;
+  letter-spacing: 0.02em;
 }
 
 .checkbox {
-  accent-color: hsla(208, 33%, 21%, 1);
-  width: 15px;
-  height: 15px;
+  accent-color: #ffffff;
+  width: 15px; height: 15px;
   cursor: pointer;
 }
 
 .error {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  font-family: var(--font-chakra), sans-serif;
   color: #ff6b6b;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 107, 107, 0.08);
-  border: 1px solid rgba(255, 107, 107, 0.2);
+  background: rgba(255,107,107,0.08);
+  border: 1px solid rgba(255,107,107,0.2);
   border-radius: 8px;
 }
 
 .submitBtn {
   width: 100%;
-  padding: 0.75rem;
-  background: linear-gradient(90deg, hsla(208, 33%, 21%, 1) 0%, hsla(211, 36%, 46%, 1) 100%);
-  color: #fff;
+  padding: 0.65rem;
+  background: #ffffff;
+  color: #000000;
   border: none;
   border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 700;
+  font-family: var(--font-chakra), sans-serif;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.15s;
 }
@@ -290,16 +650,72 @@
   cursor: not-allowed;
 }
 
-/* Signup info */
-.signupInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem 0.75rem;
-  background: rgba(124, 92, 252, 0.04);
-  border: 1px solid hsla(208, 33%, 46%, 0.1);
-  border-radius: 10px;
-  font-size: 0.8rem;
-  color: #666;
-  line-height: 1.6;
+.loginContent {
+  display: block;
+}
+
+/* Hide scrollbar on card */
+.card::-webkit-scrollbar { width: 4px; }
+.card::-webkit-scrollbar-track { background: transparent; }
+.card::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+/* ══════════════════════════════════════════
+   Responsive
+   ══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .navbar { padding: 0.55rem 0.75rem; }
+
+  .navInner {
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+  }
+
+  .navLogoText { font-size: 1rem; }
+
+  .navAuthBtn {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.76rem;
+    border-radius: 8px;
+  }
+
+  .heroCard {
+    padding: 2rem 1.25rem;
+    border-radius: 18px;
+    width: calc(100% - 1.5rem);
+  }
+
+  .heroTitle { font-size: 2rem; }
+  .heroTagline { font-size: 0.85rem; }
+  .heroSub { font-size: 0.78rem; }
+
+  .heroBtn {
+    padding: 0.72rem 1.4rem;
+    font-size: 0.85rem;
+  }
+
+  .heroSecondaryBtn {
+    padding: 0.72rem 1.2rem;
+    font-size: 0.82rem;
+  }
+
+  .overlay { padding: 0.75rem; }
+
+  .card {
+    padding: 2rem 1.25rem;
+    border-radius: 16px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .navInner { padding: 0.6rem 1.25rem; }
+  .heroCard { padding: 2.5rem 1.75rem; }
+  .heroTitle { font-size: 2.5rem; }
+}
+
+@media (max-height: 600px) {
+  .heroCard { padding: 1.5rem; }
+  .card { padding: 1.5rem 1.25rem; max-height: 85vh; }
 }
