@@ -27,9 +27,25 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: { email, passwordHash },
   });
 
-  return NextResponse.json({ success: true });
+  // Generate an Email Verification Token
+  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  await prisma.verificationToken.create({
+    data: {
+      identifier: email,
+      token,
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+    },
+  });
+
+  console.log(`\n===========================================`);
+  console.log(`EMAIL VERIFICATION LINK (LOCAL TESTING)`);
+  console.log(`Email: ${email}`);
+  console.log(`Link: http://localhost:3000/api/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`);
+  console.log(`===========================================\n`);
+
+  return NextResponse.json({ success: true, message: "Verification required. Check server console for link." });
 }

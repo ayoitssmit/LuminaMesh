@@ -35,6 +35,38 @@ export async function GET(req: Request, context: Context) {
       expiresIn: "24h",
     });
 
+    const iceServers: RTCIceServer[] = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun.cloudflare.com:3478" },
+    ];
+
+    if (process.env.TURN_URL) {
+      iceServers.unshift({
+        urls: process.env.TURN_URL,
+        username: process.env.TURN_USERNAME,
+        credential: process.env.TURN_PASSWORD,
+      });
+    } else {
+      iceServers.push(
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       room: {
@@ -49,6 +81,7 @@ export async function GET(req: Request, context: Context) {
       },
       peerId,
       token,
+      iceServers,
     });
 
   } catch (error) {

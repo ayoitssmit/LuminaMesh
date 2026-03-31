@@ -41,6 +41,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Please log in with Google or GitHub, or set a password in your profile.");
         }
 
+        if (!user.emailVerified) {
+          throw new Error("Please verify your email address to log in.");
+        }
+
         const valid = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash
@@ -61,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days default
+    maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
     async jwt({ token, user, trigger, session }) {

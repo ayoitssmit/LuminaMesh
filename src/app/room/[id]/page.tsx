@@ -22,6 +22,7 @@ type RoomData = {
   file: FileInfo;
   peerId: string;
   token: string;
+  iceServers: RTCIceServer[];
 };
 
 type PageProps = {
@@ -63,6 +64,7 @@ export default function RoomPage({ params }: PageProps) {
             file: data.room.file,
             peerId: data.peerId,
             token: data.token,
+            iceServers: data.iceServers,
           });
           setStatus("connecting");
         } else {
@@ -119,7 +121,7 @@ export default function RoomPage({ params }: PageProps) {
           schedulerRef.current.handleMessage(peerId, message);
         }
       },
-    });
+    }, roomData.iceServers);
 
     peerManager.setPeerId(roomData.peerId);
     peerManagerRef.current = peerManager;

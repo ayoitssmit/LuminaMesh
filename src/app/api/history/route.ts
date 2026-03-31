@@ -64,12 +64,16 @@ export async function DELETE(req: NextRequest) {
   const id = searchParams.get("id");
 
   if (id) {
-    await prisma.transferHistory.delete({
+    const result = await prisma.transferHistory.deleteMany({
       where: {
         id,
         userId: session.user.id,
       },
     });
+    
+    if (result.count === 0) {
+      return NextResponse.json({ error: "Record not found or unauthorized to delete" }, { status: 403 });
+    }
   } else {
     await prisma.transferHistory.deleteMany({
       where: {

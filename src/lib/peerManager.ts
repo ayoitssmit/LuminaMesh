@@ -30,40 +30,7 @@ class NativePeer {
     private onError: (err: Error) => void,
     private dynamicIceServers?: RTCIceServer[]
   ) {
-    const iceServers: RTCIceServer[] = this.dynamicIceServers || [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun.cloudflare.com:3478" },
-      {
-        urls: "turn:openrelay.metered.ca:80",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:443",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:443?transport=tcp",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: "turns:openrelay.metered.ca:443?transport=tcp",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      }
-    ];
-
-    if (process.env.NEXT_PUBLIC_TURN_URL && (!this.dynamicIceServers || this.dynamicIceServers.length === 0)) {
-      // Prioritize the user's custom TURN server by placing it first
-      iceServers.unshift({
-        urls: process.env.NEXT_PUBLIC_TURN_URL,
-        username: process.env.NEXT_PUBLIC_TURN_USERNAME,
-        credential: process.env.NEXT_PUBLIC_TURN_PASSWORD,
-      });
-    }
+    const iceServers: RTCIceServer[] = this.dynamicIceServers || [];
 
     this.pc = new RTCPeerConnection({
       iceCandidatePoolSize: 2, // Speeds up gathering on restrictive networks
