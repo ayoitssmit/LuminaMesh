@@ -22,6 +22,11 @@ const chakraPetch = Chakra_Petch({
 export const metadata: Metadata = {
   title: "LuminaMesh — Peer-to-Peer File Sharing",
   description: "Share files directly between browsers through an encrypted WebRTC mesh network. No server uploads, no size limits, zero persistence.",
+  icons: {
+    icon: "/Logo.png",
+    shortcut: "/Logo.png",
+    apple: "/Logo.png",
+  },
 };
 
 export default function RootLayout({
