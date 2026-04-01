@@ -3,72 +3,66 @@
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![WebRTC](https://img.shields.io/badge/WebRTC-P2P-333333?logo=webrtc)
-![Socket.io](https://img.shields.io/badge/Socket.io-Signaling-010101?logo=socket.io)
+![Pusher](https://img.shields.io/badge/Pusher-Signaling-300D4F?logo=pusher)
+![Twilio](https://img.shields.io/badge/Twilio-TURN-F22F46?logo=twilio)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)
 ![PostgreSQL](https://img.shields.io/badge/Neon-PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Upstash-Redis-DC382D?logo=redis&logoColor=white)
 
-LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling server with the infinite scalability of a client-side full-mesh swarm network. It allows users to share multi-gigabyte files securely and efficiently directly through their browsers with zero-persistence server storage.
+LuminaMesh is a high-performance, decentralized peer-to-peer (P2P) file sharing application built on a hybrid network model. It combines the reliability of a centralized signaling mechanism with the infinite scalability of a client-side full-mesh swarm network. The system facilitates secure, efficient sharing of multi-gigabyte files directly through browser clients without persistence on server storage.
 
 ## Key Features and Capabilities
 
-- **Infinite File Size Support:** Securely stream files of any size (tested 10GB+) directly from browser to browser without relying on cloud storage or hitting upload limits.
-- **Full-Mesh Swarm Routing:** Downloads scale exponentially. The more peers that join a room, the faster the file distributes among the swarm using simultaneous multi-source fetching.
-- **Resumable Downloads:** Accidentally close the tab midway? LuminaMesh instantly recovers your exact progress using local IndexedDB caching and resumes downloading the remaining chunks from the swarm.
-- **Direct-to-Disk Streaming:** Zero Out-of-Memory (OOM) browser crashes. Massive files bypass the browser's RAM entirely, writing chunks directly onto the user's hard drive via the Native FileSystem Access API.
-- **End-to-End Encrypted (E2EE):** All transfers occur over strict DTLS/SRTP WebRTC Data Channels. The server never payload-decrypts or hosts your files.
-- **WebRTC Smart Throttling:** Network backpressure is natively managed. The SCTP buffer is dynamically monitored to prevent packet drops and main-thread freezing on slow networks.
-- **Zero-Persistence Safety:** Files exist entirely within the volatile memory of the active browser swarm. When a room hits zero peers, all transient signaling metadata permanently vanishes.
-
----
+- **Infinite File Size Support:** Stream files of unrestricted size directly between browsers bypassing cloud storage dependencies and upload limits.
+- **Full-Mesh Swarm Routing:** Downloads scale exponentially. Network performance improves proportionately with the number of peers within a session through simultaneous multi-source fetching.
+- **Resumable Downloads:** Session interruptions are mitigated via local IndexedDB caching, seamlessly resuming incomplete transfers from the swarm.
+- **Direct-to-Disk Streaming:** Engineered to prevent Out-of-Memory (OOM) failures, large file constraints are mitigated by writing directly to local disk structures leveraging the Native FileSystem Access API.
+- **End-to-End Encryption (E2EE):** Transfers strictly operate over DTLS/SRTP WebRTC Data Channels. Centralized servers do not compute or host payload content.
+- **WebRTC Smart Throttling:** Network backpressure is systematically managed. The SCTP buffer is dynamically monitored to prevent packet drops and main-thread interruptions across restricted bandwidth.
+- **Zero-Persistence Data Policy:** Payloads remain exclusively within the volatile memory structures of the active browser swarm. Terminating all peer connections permanently eradicates transient signaling metadata.
+- **Enterprise-Grade NAT Traversal:** WebRTC connectivity circumvents aggressive firewall packet inspection and restricted corporate/educational networks using a scalable Twilio TURN relay infrastructure.
 
 ## Architecture Overview
 
-LuminaMesh operates on a highly resilient dual-layer architecture:
+LuminaMesh implements a robust dual-layer architecture:
 
-### 1. The Signaling Server (Nexus)
-A robust Node.js server wrapping Next.js and Socket.io. The server purely manages WebRTC signaling (SDP offers, answers, and ICE candidates) to facilitate connection handshakes globally. Upon joining, every peer receives a list of all existing peers in the room, enabling full-mesh WebRTC connections where every node directly interfaces with every other node.
+### 1. The Signaling Mechanism (Pusher)
+The system employs Pusher Channels connected to a Next.js serverless infrastructure to manage initial state. This layer handles declarative WebRTC signaling (SDP offers, answers, and ICE candidates) to facilitate global connection handshakes. Upon authorization, peers receive state topology of the existing session, initializing full-mesh WebRTC interfaces where clients connect with all active nodes.
 
 ### 2. The Client Mesh (Swarm)
-Once connected via the signaling server, peers communicate directly over WebRTC data channels in a full-mesh topology. The mesh network utilizes a highly-optimized gossip protocol to announce available file chunks dynamically across the swarm.
+Following signaling connection, clients communicate directly over WebRTC data channels establishing a full-mesh topology. The network utilizes an optimized gossip protocol to dynamically announce file chunk availability across the designated swarm.
 
 #### Full-Mesh Swarm Protocol
-Unlike traditional star-topology file sharing, LuminaMesh implements a BitTorrent-inspired swarm to enable concurrent, high-throughput transfers:
-- **Bitfield Gossip:** Every peer periodically announces exactly which chunks they possess to the swarm.
-- **Rarest-First Chunk Selection:** Peers prioritize downloading chunks held by the *fewest* peers, maximizing unique data availability across the network.
-- **Weighted Peer Selection:** Requests are spread evenly across all available peers using a dynamic load-balancing algorithm, heavily favoring peers with the lowest latency and highest throughput.
-- **Simultaneous Assembly:** Chunk requests are dispatched across multiple peers in parallel, multiplying transfer speeds by the number of connected nodes.
-- **Automatic Re-Seeding:** Receivers become seeders instantly. Every downloaded chunk is immediately available for redistribution.
-
----
+LuminaMesh implements a sophisticated swarm algorithm enabling concurrent, high-throughput transfers:
+- **Bitfield Gossip:** Nodes systematically announce their verified chunk possessions to the active swarm.
+- **Rarest-First Chunk Selection:** The system prioritizes acquisition of chunks distributed to the fewest nodes, optimizing unique data availability across the architecture.
+- **Weighted Peer Selection:** Requests dynamically load-balance across available edges, structurally favoring paths with optimal latency and throughput characteristics.
+- **Simultaneous Assembly:** Chunk requests dispatch concurrently across multiple remote peers, effectively multiplying transfer velocities.
+- **Automatic Re-Seeding:** Receiver nodes instantaneously convert to seeders, redistributing acquired chunks without delay.
 
 ## Memory Management & Resiliency
 
-Working with enormous files in a browser environment requires extreme memory precision. LuminaMesh implements industry-leading safety protocols:
+Processing multi-gigabyte parameters within a browser sandbox necessitates strict memory protocols. LuminaMesh ensures stability through:
 
-- **WebRTC SCTP Smart Throttling:** To prevent browser crashes and frozen UI threads when transferring multi-gigabyte files, LuminaMesh implements native SCTP backpressure. An asynchronous execution queue actively monitors the `RTCDataChannel.bufferedAmount`. If the buffer exceeds 16MB, the disk-read loop intelligently awaits an `onbufferedamountlow` event (triggered at 64KB) before resuming. This precise "Pull" model guarantees zero packet drops even on intensely congested networks.
-- **Direct-to-Disk Streaming:** Large files (>500MB) bypass the browser's RAM array entirely and stream directly to the user's hard drive using the FileSystem Access API.
-- **Secure IndexedDB Caching:** Incoming chunks are permanently cached efficiently in the browser's local IndexedDB NoSQL storage table via Dexie.js.
-- **Stitch-and-Purge Lifecycle (GC):** Temporary cache storage is automatically purged the exact moment a user completes their download and explicitly clicks "Save File". A passive 7-day Sweeper also runs on application boot to seamlessly clean up any abandoned/incomplete downloads from the disk.
-
----
+- **WebRTC SCTP Smart Throttling:** Utilizing native SCTP backpressure, an asynchronous queue monitors the `RTCDataChannel.bufferedAmount`. Buffer expansion beyond 16MB initiates a systematic disk-read pause, resuming upon the `onbufferedamountlow` event trigger (64KB threshold). This "Pull" sequence guarantees zero packet loss over congested network paths.
+- **Direct-to-Disk Streaming:** Payloads exceeding 500MB bypass device RAM entirely, securely streaming direct to the persistent disk using the FileSystem Access API.
+- **Secure IndexedDB Caching:** Incoming fragment variables permanently hash to local IndexedDB NoSQL tables via Dexie.js for structural integrity.
+- **Stitch-and-Purge Lifecycle (GC):** Transient cache allocations automatically purge following explicit user verification ("Save File"). An automated 7-day maintenance lifecycle clears any aborted filesystem routines upon boot sequences.
 
 ## Technology Stack
 
 - **Frontend Framework:** Next.js 16 (App Router), React 19
-- **Database (Metadata):** Neon PostgreSQL with Prisma ORM
-- **In-Memory State:** Upstash Redis Serverless
-- **Real-Time Signaling:** Socket.io
-- **P2P Networking:** Native WebRTC (RTCPeerConnection and RTCDataChannel)
-- **Client Storage:** IndexedDB (via Dexie.js)
+- **Database (Metadata):** Neon PostgreSQL deployed with Prisma ORM
+- **In-Memory State:** Upstash Redis (Serverless)
+- **Real-Time Signaling:** Pusher Serverless WebSockets
+- **P2P Networking:** Native WebRTC (RTCPeerConnection, RTCDataChannel) with Twilio TURN Infrastructure
+- **Client Storage:** IndexedDB managed through Dexie.js
 - **Local Write Protocol:** Native FileSystem Access API
-- **Security & Hashes:** JSON Web Tokens (JWT), Web Crypto API (SHA-256)
-
----
+- **Security & Cryptography:** JSON Web Tokens (JWT), Web Crypto API (SHA-256)
 
 ## Local Development Setup
 
-To run LuminaMesh locally, ensure you have Node.js (v20+) installed. You will also need free accounts from Neon (for PostgreSQL) and Upstash (for Serverless Redis).
+Validation of the environment requires Node.js (v20+). Third-party resource provisioning is required for PostgreSQL, Redis, Pusher, and Twilio.
 
 1. **Clone the Repository**
    ```bash
@@ -78,50 +72,48 @@ To run LuminaMesh locally, ensure you have Node.js (v20+) installed. You will al
    ```
 
 2. **Environment Configuration**
-   Rename `.env.example` to `.env` or `.env.local` and configure your credentials.
+   Provision `.env` following `.env.example` structure.
    ```bash
    cp .env.example .env
    ```
-   *Required setups:*
-   - **PostgreSQL**: Create a free database at [Neon.tech](https://neon.tech) and get your connection string.
-   - **Redis**: Create a free Serverless Redis database at [Upstash](https://upstash.com) and get your REST URL and Token.
-   - **Authentication**: Set up OAuth apps on Google Cloud Console and GitHub Developer Settings to get Client IDs and Secrets. Generate strong random strings for `JWT_SECRET`, `AUTH_SECRET`, and `NEXTAUTH_SECRET`.
+   *Required Infrastructure:*
+   - **PostgreSQL**: Provision a relational database via Neon.tech and inject the connection string.
+   - **Redis**: Deploy a Serverless Redis cluster via Upstash and inject REST credentials.
+   - **Authentication**: Configure Google Cloud Console and GitHub Developer Settings for standard OAuth IDs and Secrets. Define strong cryptographic strings for `JWT_SECRET`, `AUTH_SECRET`, and `NEXTAUTH_SECRET`.
+   - **Pusher**: Register a unified Pusher Channels application and inject credentials to manage signaling operations.
+   - **Twilio**: Configure a Twilio account and provide `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` to generate secure TURN server credentials to bypass NAT/Firewall blocks.
 
 3. **Database Migration**
-   Generate the Prisma client and push the schema to your database to set up tables:
+   Execute Prisma client compilation and align relational schemas:
    ```bash
    npx prisma generate
    npx prisma db push
    ```
 
 4. **Run the Development Server**
-   Start the Next.js development server:
+   Initialize the development environment:
    ```bash
    npm run dev
    ```
-   Alternatively, for a stable production-like environment (to test P2P transfers without HMR interrupting sockets):
+   For precise P2P throughput testing (avoiding HMR websocket interruption), utilization of the production build is recommended:
    ```bash
    npm run build
    $env:NODE_ENV="production"; npm start # On Windows PowerShell
    # OR
    NODE_ENV=production npm start # On Mac/Linux
    ```
-   The application will be accessible at `http://localhost:3000`.
+   Deployments validate over standard port `http://localhost:3000`.
 
----
+## Application Lifecycle
 
-## Application Flow (How It Works)
+LuminaMesh transitions conventional browser processes into robust swarm nodes:
 
-LuminaMesh converts standard browser clients into active swarm nodes in a few simple steps:
-
-1. **Upload Phase:** Navigate to `/upload` and drop a file. The client slices the file into precise 64KB pieces and hashes each piece to create a SHA-256 master manifest.
-2. **Room Creation:** The manifest and metadata are dispatched to the Next.js API. The server provisions a unique room ID, lodges the metadata in PostgreSQL, and yields a secure JWT token for room access.
-3. **Swarm Initialization:** The uploader automatically websockets to the Socket.io signaling server using their JWT, entering a "seeding" state.
-4. **Peer Connection:** Recipients open the generated room link. The client retrieves the metadata to map the file topology.
-5. **Full-Mesh Transfer:** New peers securely establish direct WebRTC data channels with all connected peers. Files seamlessly materialize pulling chunks from the entire room simultaneously.
-6. **Re-seeding:** Over the course of the download, and indefinitely after completion, the recipient client retains the assembled topology and actively redistributes chunks to support the swarm's health.
-
----
+1. **Upload Phase:** Interaction at `/upload` processes the payload. The processor evaluates physical slices (64KB) computing cumulative SHA-256 manifests.
+2. **Room Allocation:** Master manifests route to the Next.js API. The protocol provisions a standardized session ID, hashes PostgreSQL metadata, and securely returns a standardized JWT token.
+3. **Swarm Initialization:** Seed clients transparently connect to the Pusher signaling cluster authenticating with their private JWT.
+4. **Peer Connection:** Connecting clients process the session URL, querying remote metadata to dynamically establish file topologies.
+5. **Full-Mesh Transfer:** Nodes safely construct WebRTC pathways against registered session participants. Chunks synchronize simultaneously from diverse sources.
+6. **Re-seeding Protocol:** Throughout and subsequent to transfer completion, local architectures inherently reconstruct topology paths, stabilizing swarm vitality by fulfilling subsequent data requirements.
 
 ## License
 
