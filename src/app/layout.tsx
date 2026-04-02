@@ -24,14 +24,14 @@ export const metadata: Metadata = {
   title: "LuminaMesh — Peer-to-Peer File Sharing",
   description: "Share files directly between browsers through an encrypted WebRTC mesh network. No server uploads, no size limits, zero persistence.",
   icons: {
-    icon: "/FinalLogo.png",
-    shortcut: "/FinalLogo.png",
-    apple: "/FinalLogo.png",
+    icon: "/lmlogo.png",
+    shortcut: "/lmlogo.png",
+    apple: "/lmlogo.png",
     other: [
       {
         rel: 'icon',
         type: 'image/png',
-        url: '/FinalLogo.png',
+        url: '/lmlogo.png',
       },
     ],
   },
@@ -45,7 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/FinalLogo.png" />
+        <link rel="icon" href="/lmlogo.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${chakraPetch.variable}`}>
         <Providers>{children}</Providers>

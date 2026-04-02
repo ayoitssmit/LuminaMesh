@@ -172,7 +172,7 @@ function LandingContent() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             >
-              <Image src="/FinalLogo.png" alt="LuminaMesh Logo" width={36} height={36} />
+              <Image src="/lmlogo.png" alt="LuminaMesh Logo" width={36} height={36} />
               LuminaMesh
             </div>
             
